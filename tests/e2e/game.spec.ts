@@ -25,7 +25,7 @@ test("mobile flow starts a game, asks a question, and receives an AI turn", asyn
 		.click();
 	await page.getByRole("button", { name: "질문하기" }).click();
 
-	await expect(page.getByText(/컴퓨터 질문|컴퓨터 추측/)).toBeVisible();
+	await expect(page.getByText(/컴퓨터가|컴퓨터 추측/)).toBeVisible();
 	await expect(page.getByLabel("게임 기록")).toContainText("답:");
 });
 

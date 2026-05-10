@@ -1,12 +1,19 @@
-import { colorLabels, visibleTileKey } from "./tiles";
+import { colorLabels, formatTile, visibleTileKey } from "./tiles";
 import type { Code, QuestionAction, QuestionCard } from "./types";
 
 const positions = ["A", "B", "C", "D", "E"] as const;
+const positionLabels = {
+	A: "A칸",
+	B: "B칸",
+	C: "C칸",
+	D: "D칸",
+	E: "E칸",
+} as const;
 
 function positionList(indexes: number[]) {
 	return indexes.length === 0
 		? "없음"
-		: indexes.map((index) => positions[index]).join(",");
+		: indexes.map((index) => positionLabels[positions[index]]).join(", ");
 }
 
 function getNumberParam(action: QuestionAction) {
@@ -274,4 +281,52 @@ export function formatAction(action: QuestionAction, cards = QUESTION_CARDS) {
 				: ` (${colorLabels[action.param as keyof typeof colorLabels] ?? action.param})`;
 
 	return `${card.title}${suffix}`;
+}
+
+export function formatAnswerForLog(answer: unknown) {
+	const value = String(answer);
+	const visibleTile = value.match(/^([A-E])=([RBG])(\d)$/);
+	if (visibleTile) {
+		const [, position, color, number] = visibleTile;
+		return `${positionLabels[position as keyof typeof positionLabels]} ${formatTile(
+			{
+				id: `${color}${number}`,
+				color: color as keyof typeof colorLabels,
+				number: Number(number),
+			},
+		)}`;
+	}
+
+	if (value === "true") return "예";
+	if (value === "false") return "아니요";
+	return value;
+}
+
+export function formatQuestionForLog(
+	action: QuestionAction,
+	actor: "human" | "computer",
+) {
+	const owner = actor === "human" ? "컴퓨터 암호" : "내 암호";
+	const param = action.param;
+
+	switch (action.cardId) {
+		case "visible-key-at-position": {
+			const position =
+				typeof param === "number"
+					? positionLabels[positions[param]]
+					: "선택한 칸";
+			return `${owner}의 ${position}을 공개하라고 물었습니다.`;
+		}
+		case "where-number":
+			return `${owner}에서 숫자 ${param}이 있는 칸을 물었습니다.`;
+		case "where-color":
+		case "count-color":
+			return `${owner}에서 ${colorLabels[param as keyof typeof colorLabels]} 타일을 물었습니다.`;
+		case "has-number":
+			return `${owner}에 숫자 ${param}이 있는지 물었습니다.`;
+		case "count-greater-than":
+			return `${owner}에서 ${param}보다 큰 타일 개수를 물었습니다.`;
+		default:
+			return `${owner}에 대해 "${formatAction(action)}" 질문을 했습니다.`;
+	}
 }

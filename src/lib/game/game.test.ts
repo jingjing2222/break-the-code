@@ -99,7 +99,7 @@ describe("questions", () => {
 				{ cardId: "where-number", param: 1, isSharedInfo: false },
 				code,
 			),
-		).toBe("A,B");
+		).toBe("A칸, B칸");
 		expect(
 			answerQuestion(
 				{ cardId: "where-number", param: 4, isSharedInfo: false },
@@ -226,6 +226,11 @@ describe("AI", () => {
 				(code) => answerQuestion(action, code) === sharedAnswer,
 			),
 		).toBe(true);
+		expect(next.log[0].text).toContain(
+			"컴퓨터가 내 암호의 A칸을 공개하라고 물었습니다.",
+		);
+		expect(next.log[0].text).toContain("함께 공개된 컴퓨터의 답은");
+		expect(next.log[0].text).not.toContain("A=");
 	});
 
 	it("guesses when visible candidates collapse to a single code", () => {

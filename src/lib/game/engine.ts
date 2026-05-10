@@ -2,7 +2,8 @@ import { chooseComputerTurn, DIFFICULTIES, observeAnswer } from "./ai";
 import { filterCandidates, makeInitialCandidates } from "./deduction";
 import {
 	answerQuestion,
-	formatAction,
+	formatAnswerForLog,
+	formatQuestionForLog,
 	generateLegalQuestionActions,
 	QUESTION_CARDS,
 } from "./questions";
@@ -146,8 +147,10 @@ export function askQuestion(
 						),
 					};
 	const sharedText = action.isSharedInfo
-		? ` 공유 정보: 질문자도 ${sharedAnswer}라고 답합니다.`
+		? ` 함께 공개된 ${actor === "human" ? "플레이어" : "컴퓨터"}의 답은 ${formatAnswerForLog(sharedAnswer)}입니다.`
 		: "";
+	const actorLabel = actor === "human" ? "플레이어" : "컴퓨터";
+	const answerText = formatAnswerForLog(answer);
 	const exhausted =
 		replacement.visibleQuestionCards.length === 0 &&
 		replacement.questionDeck.length === 0;
@@ -165,7 +168,7 @@ export function askQuestion(
 			createLogEntry({
 				actor,
 				kind: "ask",
-				text: `${actor === "human" ? "플레이어" : "컴퓨터"} 질문: ${formatAction(action)}.${sharedText}`,
+				text: `${actorLabel}가 ${formatQuestionForLog(action, actor)} 답은 ${answerText}입니다.${sharedText}`,
 				answer,
 				candidatesAfter:
 					actor === "computer" ? computer.candidates.length : undefined,
