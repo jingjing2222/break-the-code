@@ -2,8 +2,15 @@ import { expect, test } from "@playwright/test";
 import {
 	createGame,
 	createSeededRandom,
+	type Tile,
 	visibleCodeKey,
 } from "../../src/lib/game";
+
+function colorLabel(color: Tile["color"]) {
+	if (color === "R") return "빨강";
+	if (color === "B") return "파랑";
+	return "초록";
+}
 
 test("mobile flow starts a game, asks a question, and receives an AI turn", async ({
 	page,
@@ -27,6 +34,16 @@ test("mobile flow starts a game, asks a question, and receives an AI turn", asyn
 
 	await expect(page.getByText(/컴퓨터가|컴퓨터 추측/)).toBeVisible();
 	await expect(page.getByLabel("게임 기록")).toContainText("답:");
+	await expect(page.getByLabel("내 질문")).toBeVisible();
+	await expect(page.getByLabel("컴퓨터 질문")).toBeVisible();
+
+	const questionInfoToggle = page
+		.getByRole("button", { name: /질문 설명 토글/ })
+		.first();
+	await expect(questionInfoToggle).toHaveAttribute("aria-expanded", "false");
+	await questionInfoToggle.click();
+	await expect(questionInfoToggle).toHaveAttribute("aria-expanded", "true");
+	await expect(page.getByRole("tooltip")).toBeVisible();
 });
 
 test("desktop layout exposes board, question cards, and deduction log", async ({
@@ -39,6 +56,27 @@ test("desktop layout exposes board, question cards, and deduction log", async ({
 	await expect(page.getByLabel("내 암호")).toBeVisible();
 	await expect(page.getByLabel("질문 카드")).toBeVisible();
 	await expect(page.getByLabel("게임 기록")).toContainText("전문가 컴퓨터");
+	await expect(page.getByRole("button", { name: "메모장 열기" })).toBeVisible();
+});
+
+test("sticky memo opens as an overlay and keeps local notes", async ({
+	page,
+}) => {
+	await page.goto("/game?seed=61&difficulty=intermediate&first=human");
+
+	await page.getByRole("button", { name: "메모장 열기" }).click();
+	await expect(page.getByRole("dialog", { name: "메모장" })).toBeVisible();
+
+	await page.getByLabel("게임 메모").fill("B는 파랑 후보, 7 확인 필요");
+	await page.getByRole("button", { name: "메모장 닫기" }).first().click();
+	await expect(page.getByRole("dialog", { name: "메모장" })).toHaveCount(0);
+
+	await page.getByRole("button", { name: "메모장 열기" }).click();
+	await expect(page.getByLabel("게임 메모")).toHaveValue(
+		"B는 파랑 후보, 7 확인 필요",
+	);
+	await page.getByRole("button", { name: "메모장 닫기" }).first().click();
+	await expect(page.getByRole("dialog", { name: "메모장" })).toHaveCount(0);
 });
 
 test("wrong and correct guesses complete the human guess flow", async ({
@@ -52,24 +90,55 @@ test("wrong and correct guesses complete the human guess flow", async ({
 
 	await page.goto(`/game?seed=${seed}&difficulty=intermediate&first=human`);
 
+	await expect(page.getByRole("button", { name: "추측 제출" })).toBeDisabled();
+	await page.getByLabel("A 빨강 선택").click();
+	await expect(page.getByLabel("A 빨강 선택")).toHaveAttribute(
+		"aria-pressed",
+		"true",
+	);
+	await page.getByLabel("A 빨강 선택").click();
+	await expect(page.getByLabel("A 빨강 선택")).toHaveAttribute(
+		"aria-pressed",
+		"false",
+	);
+
+	const wrong = expected.map((tile, index) =>
+		index === 0 ? { ...tile, number: (tile.number + 1) % 10 } : tile,
+	);
+	for (let index = 0; index < wrong.length; index += 1) {
+		const slot = String.fromCharCode(65 + index);
+		await page
+			.getByLabel(`${slot} ${colorLabel(wrong[index].color)} 선택`)
+			.click();
+		await page
+			.getByLabel(`${index + 1}번 숫자`)
+			.fill(String(wrong[index].number));
+	}
+
+	await expect(page.getByRole("button", { name: "추측 제출" })).toBeEnabled();
 	await page.getByRole("button", { name: "추측 제출" }).click();
 	await expect(page.getByLabel("게임 기록")).toContainText("오답입니다.");
 
 	await page.getByRole("button", { name: "새 게임" }).click();
+	await expect(page.getByRole("button", { name: "추측 제출" })).toBeDisabled();
 
 	for (let index = 0; index < expected.length; index += 1) {
 		const slot = String.fromCharCode(65 + index);
 		await page
-			.getByLabel(
-				`${slot} ${expected[index].color === "R" ? "빨강" : expected[index].color === "B" ? "파랑" : "초록"} 선택`,
-			)
+			.getByLabel(`${slot} ${colorLabel(expected[index].color)} 선택`)
 			.click();
 		await page
 			.getByLabel(`${index + 1}번 숫자`)
 			.fill(String(expected[index].number));
 	}
 
+	await expect(page.getByRole("button", { name: "추측 제출" })).toBeEnabled();
 	await page.getByRole("button", { name: "추측 제출" }).click();
+	await expect(page.getByRole("dialog", { name: "게임 결과" })).toContainText(
+		"승리",
+	);
+	await page.mouse.click(8, 8);
+	await expect(page.getByRole("dialog", { name: "게임 결과" })).toHaveCount(0);
 	await expect(page.getByText("플레이어가 암호를 해독했습니다.")).toBeVisible();
 	await page.waitForFunction(() =>
 		window.localStorage

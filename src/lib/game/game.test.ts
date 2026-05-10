@@ -158,6 +158,7 @@ describe("AI", () => {
 				(code) => answerQuestion(action, code) === answer,
 			),
 		).toBe(true);
+		expect(next.log[0].text).not.toContain("답은");
 	});
 
 	it("learns from the human side of a shared information question", () => {
@@ -229,7 +230,8 @@ describe("AI", () => {
 		expect(next.log[0].text).toContain(
 			"컴퓨터가 내 암호의 A칸을 공개하라고 물었습니다.",
 		);
-		expect(next.log[0].text).toContain("함께 공개된 컴퓨터의 답은");
+		expect(next.log[0].text).not.toContain("공개된");
+		expect(next.log[0].sharedAnswer).toBe(sharedAnswer);
 		expect(next.log[0].text).not.toContain("A=");
 	});
 

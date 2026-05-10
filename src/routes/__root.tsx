@@ -1,4 +1,5 @@
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { OverlayProvider } from "overlay-kit";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 
@@ -39,9 +40,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<HeadContent />
 			</head>
 			<body>
-				<Header />
-				{children}
-				<Footer />
+				<OverlayProvider>
+					<Header />
+					{children}
+					<Footer />
+				</OverlayProvider>
 				<Scripts />
 			</body>
 		</html>

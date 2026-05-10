@@ -87,7 +87,9 @@ export type GameLogEntry = {
 	actor: Player;
 	kind: "ask" | "guess" | "system";
 	text: string;
+	action?: QuestionAction;
 	answer?: Answer;
+	sharedAnswer?: Answer;
 	candidatesAfter?: number;
 };
 
