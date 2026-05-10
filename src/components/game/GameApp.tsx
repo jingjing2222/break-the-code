@@ -17,6 +17,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import ClientOnly from "#/components/ClientOnly";
 import { DIFFICULTIES } from "#/lib/game/ai";
 import {
 	askQuestion,
@@ -1099,7 +1100,7 @@ function QuickOverlayBar({ state }: { state: GameState }) {
 	);
 }
 
-export default function GameApp() {
+function GameClient() {
 	const initialGameOptionsRef = useRef<ReturnType<
 		typeof getInitialGameOptions
 	> | null>(null);
@@ -1237,50 +1238,26 @@ export default function GameApp() {
 				: "정답을 제출할 수 있습니다.";
 
 	return (
-		<main className="mx-auto max-w-[1600px] px-4 pt-4 pb-[calc(9rem+env(safe-area-inset-bottom))] text-[#1a1a1a] md:px-6 md:pb-4">
-			<section
-				className="grid gap-5 border-b-2 border-black py-5 md:grid-cols-[minmax(0,1fr)_260px] md:items-end"
-				aria-labelledby="game-title"
-			>
-				<div>
-					<p className="m-0 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px]">
-						TAGIRON / BREAK THE CODE
-					</p>
-					<h1
-						className="m-0 mt-2 font-['Libre_Baskerville'] text-[clamp(2.4rem,11vw,5.5rem)] leading-[1.05] tracking-normal text-black"
-						id="game-title"
+		<>
+			<fieldset className="mt-5 grid content-start gap-2 md:max-w-[260px]">
+				<legend className="font-['Space_Mono'] text-xs font-bold uppercase tracking-[1px]">
+					게임 설정
+				</legend>
+				<label className="grid gap-1 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1px]">
+					난이도
+					<select
+						className="min-h-11 border-2 border-black bg-white px-3 py-2 font-['Work_Sans'] text-base font-bold text-black"
+						onChange={(event) => restart(event.target.value as DifficultyName)}
+						value={difficulty}
 					>
-						Break the Code
-					</h1>
-					<p className="mt-3 max-w-3xl text-base leading-7">
-						공개 질문 카드 6장을 골라 컴퓨터의 5개 암호 타일을 먼저 맞히십시오.
-						난이도가 높을수록 컴퓨터는 더 신중하게 질문하고 확실할 때 정답을
-						선언합니다.
-					</p>
-				</div>
-				<fieldset className="grid content-start gap-2">
-					<legend className="font-['Space_Mono'] text-xs font-bold uppercase tracking-[1px]">
-						게임 설정
-					</legend>
-					<label className="grid gap-1 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1px]">
-						난이도
-						<select
-							className="min-h-11 border-2 border-black bg-white px-3 py-2 font-['Work_Sans'] text-base font-bold text-black"
-							onChange={(event) =>
-								restart(event.target.value as DifficultyName)
-							}
-							value={difficulty}
-						>
-							{Object.values(DIFFICULTIES).map((item) => (
-								<option key={item.name} value={item.name}>
-									{item.label}
-								</option>
-							))}
-						</select>
-					</label>
-				</fieldset>
-			</section>
-
+						{Object.values(DIFFICULTIES).map((item) => (
+							<option key={item.name} value={item.name}>
+								{item.label}
+							</option>
+						))}
+					</select>
+				</label>
+			</fieldset>
 			<section
 				className="my-4 flex min-h-11 items-center justify-between gap-4 bg-[#111114] px-3 font-['Space_Mono'] text-xs uppercase tracking-[1px] text-white"
 				aria-live="polite"
@@ -1328,6 +1305,56 @@ export default function GameApp() {
 			</div>
 
 			<QuickOverlayBar state={state} />
+		</>
+	);
+}
+
+function GameFallback() {
+	return (
+		<div className="mt-5 grid gap-5 xl:grid-cols-[minmax(440px,1.35fr)_minmax(280px,0.85fr)] xl:items-start">
+			<section className="border-t-2 border-black" aria-label="질문 카드">
+				<div className={ribbonClass}>공개 질문 카드 6장</div>
+				<div className="mt-3 border-2 border-black p-4">
+					<p className="leading-7">게임을 준비하고 있습니다.</p>
+				</div>
+			</section>
+			<aside className="grid content-start gap-5">
+				<section className="border-t-2 border-black" aria-label="정답 추측">
+					<div className={ribbonClass}>정답 선언</div>
+					<div className="mt-3 border-2 border-black p-4">
+						<p className="leading-7">암호 입력판을 불러오고 있습니다.</p>
+					</div>
+				</section>
+			</aside>
+		</div>
+	);
+}
+
+export default function GameApp() {
+	return (
+		<main className="mx-auto max-w-[1600px] px-4 pt-4 pb-[calc(9rem+env(safe-area-inset-bottom))] text-[#1a1a1a] md:px-6 md:pb-4">
+			<section
+				className="border-b-2 border-black py-5"
+				aria-labelledby="game-title"
+			>
+				<p className="m-0 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px]">
+					TAGIRON / BREAK THE CODE
+				</p>
+				<h1
+					className="m-0 mt-2 font-['Libre_Baskerville'] text-[clamp(2.4rem,11vw,5.5rem)] leading-[1.05] tracking-normal text-black"
+					id="game-title"
+				>
+					Break the Code
+				</h1>
+				<p className="mt-3 max-w-3xl text-base leading-7">
+					공개 질문 카드 6장을 골라 컴퓨터의 5개 암호 타일을 먼저 맞히십시오.
+					난이도가 높을수록 컴퓨터는 더 신중하게 질문하고 확실할 때 정답을
+					선언합니다.
+				</p>
+			</section>
+			<ClientOnly fallback={<GameFallback />}>
+				<GameClient />
+			</ClientOnly>
 		</main>
 	);
 }

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
+import ClientOnly from "#/components/ClientOnly";
 import { DIFFICULTIES } from "#/lib/game/ai";
 import {
 	clearStoredResults,
@@ -55,7 +56,7 @@ function resultTone(result: ResultView) {
 	return "bg-[#f2f2f2] text-black";
 }
 
-function HistoryPage() {
+function HistoryResults() {
 	const [results, setResults] = useState<ResultView[]>(loadResultViews);
 
 	function clearHistory() {
@@ -69,20 +70,8 @@ function HistoryPage() {
 	).length;
 
 	return (
-		<main className="mx-auto grid max-w-[1200px] gap-6 px-4 py-5 text-[#1a1a1a] md:px-6">
-			<section className="grid gap-5 border-b-2 border-black pb-6 md:grid-cols-[minmax(0,1fr)_180px] md:items-end">
-				<div>
-					<p className="font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px]">
-						전적 보관함
-					</p>
-					<h1 className="mt-2 font-['Libre_Baskerville'] text-[clamp(2.5rem,12vw,5.5rem)] leading-[1.04] tracking-normal text-black">
-						전적
-					</h1>
-					<p className="mt-3 max-w-2xl text-base leading-7">
-						끝난 게임의 승패와 턴 수를 모아 둡니다. 진행 중인 게임이나 타일의
-						비밀 정보는 남기지 않습니다.
-					</p>
-				</div>
+		<>
+			<div className="flex justify-end">
 				<button
 					className="inline-flex min-h-11 items-center justify-center gap-2 border-2 border-black bg-white px-4 py-2 font-['Work_Sans'] font-bold uppercase text-black hover:bg-[#111114] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 					disabled={results.length === 0}
@@ -92,8 +81,7 @@ function HistoryPage() {
 					<Trash2 aria-hidden="true" size={18} />
 					전체 삭제
 				</button>
-			</section>
-
+			</div>
 			<section
 				aria-label="전적 요약"
 				className="grid grid-cols-3 border-t-2 border-l-2 border-black"
@@ -148,6 +136,62 @@ function HistoryPage() {
 					</ul>
 				)}
 			</section>
+		</>
+	);
+}
+
+function HistoryResultsFallback() {
+	return (
+		<>
+			<section
+				aria-label="전적 요약"
+				className="grid grid-cols-3 border-t-2 border-l-2 border-black"
+			>
+				{[
+					["전체", 0],
+					["승리", 0],
+					["패배", 0],
+				].map(([label, value]) => (
+					<div className="border-r-2 border-b-2 border-black p-3" key={label}>
+						<p className="font-['Work_Sans'] text-sm font-bold text-[#555]">
+							{label}
+						</p>
+						<strong className="mt-1 block font-['Libre_Baskerville'] text-3xl">
+							{value}
+						</strong>
+					</div>
+				))}
+			</section>
+			<section className="border-t-2 border-black" aria-label="저장된 전적">
+				<div className="inline-flex min-h-8 items-center bg-[#111114] px-3 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px] text-white">
+					저장된 전적
+				</div>
+				<div className="mt-3 border-2 border-black p-4">
+					<p className="leading-7">아직 저장된 결과가 없습니다.</p>
+				</div>
+			</section>
+		</>
+	);
+}
+
+function HistoryPage() {
+	return (
+		<main className="mx-auto grid max-w-[1200px] gap-6 px-4 py-5 text-[#1a1a1a] md:px-6">
+			<section className="border-b-2 border-black pb-6">
+				<p className="font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px]">
+					전적 보관함
+				</p>
+				<h1 className="mt-2 font-['Libre_Baskerville'] text-[clamp(2.5rem,12vw,5.5rem)] leading-[1.04] tracking-normal text-black">
+					전적
+				</h1>
+				<p className="mt-3 max-w-2xl text-base leading-7">
+					끝난 게임의 승패와 턴 수를 모아 둡니다. 진행 중인 게임이나 타일의 비밀
+					정보는 남기지 않습니다.
+				</p>
+			</section>
+			<ClientOnly fallback={<HistoryResultsFallback />}>
+				<HistoryResults />
+			</ClientOnly>
 		</main>
 	);
 }

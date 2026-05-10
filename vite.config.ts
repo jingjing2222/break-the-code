@@ -13,7 +13,13 @@ const config = defineConfig(({ mode }) => ({
 			? undefined
 			: cloudflare({ viteEnvironment: { name: "ssr" } }),
 		tailwindcss(),
-		tanstackStart(),
+		tanstackStart({
+			prerender: {
+				autoSubfolderIndex: true,
+				crawlLinks: true,
+				enabled: true,
+			},
+		}),
 		viteReact(),
 	],
 }));
