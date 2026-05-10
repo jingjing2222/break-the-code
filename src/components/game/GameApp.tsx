@@ -937,15 +937,13 @@ function LogEntryList({
 }
 
 function LogPanel({ state }: { state: GameState }) {
-	const humanQuestionEntries = state.log
-		.filter((entry) => entry.actor === "human" && entry.kind === "ask")
-		.slice(0, 5);
-	const computerQuestionEntries = state.log
-		.filter((entry) => entry.actor === "computer" && entry.kind === "ask")
-		.slice(0, 5);
-	const otherEntries = state.log
-		.filter((entry) => entry.kind !== "ask")
-		.slice(0, 3);
+	const humanQuestionEntries = state.log.filter(
+		(entry) => entry.actor === "human" && entry.kind === "ask",
+	);
+	const computerQuestionEntries = state.log.filter(
+		(entry) => entry.actor === "computer" && entry.kind === "ask",
+	);
+	const otherEntries = state.log.filter((entry) => entry.kind !== "ask");
 
 	return (
 		<section className="border-t-2 border-black" aria-label="게임 기록">
