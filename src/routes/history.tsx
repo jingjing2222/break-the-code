@@ -16,13 +16,15 @@ type ResultView = StoredGameResult & {
 	finishedAtLabel: string;
 };
 
+const resultDateFormatter = new Intl.DateTimeFormat("ko-KR", {
+	dateStyle: "medium",
+	timeStyle: "short",
+});
+
 function toResultView(result: StoredGameResult): ResultView {
 	return {
 		...result,
-		finishedAtLabel: new Intl.DateTimeFormat("ko-KR", {
-			dateStyle: "medium",
-			timeStyle: "short",
-		}).format(Date.parse(result.finishedAt)),
+		finishedAtLabel: resultDateFormatter.format(Date.parse(result.finishedAt)),
 	};
 }
 

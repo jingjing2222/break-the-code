@@ -2,14 +2,21 @@ import {
 	Brain,
 	Check,
 	HelpCircle,
+	KeyRound,
 	NotebookPen,
-	RotateCcw,
+	ScrollText,
 	Send,
-	ShieldQuestion,
 	X,
 } from "lucide-react";
 import { overlay, useOverlayData } from "overlay-kit";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	type ReactNode,
+	useEffect,
+	useMemo,
+	useReducer,
+	useRef,
+	useState,
+} from "react";
 import { DIFFICULTIES } from "#/lib/game/ai";
 import {
 	askQuestion,
@@ -24,12 +31,7 @@ import {
 	getQuestionCard,
 } from "#/lib/game/questions";
 import { createStoredResult, saveStoredResult } from "#/lib/game/results";
-import {
-	colorLabels,
-	createSeededRandom,
-	formatCode,
-	sortCode,
-} from "#/lib/game/tiles";
+import { colorLabels, createSeededRandom, sortCode } from "#/lib/game/tiles";
 import type {
 	Code,
 	Color,
@@ -108,6 +110,107 @@ function getInitialGameOptions(): {
 		seed: getInitialSeed(),
 		startingPlayer: getInitialStartingPlayer(),
 	};
+}
+
+type GameAppState = {
+	difficulty: DifficultyName;
+	game: GameState;
+	selectedAction: QuestionAction | null;
+	guessColors: readonly (Color | null)[];
+	guessNumbers: readonly string[];
+};
+
+type InitialGameOptions = ReturnType<typeof getInitialGameOptions>;
+
+type GameAppAction =
+	| {
+			type: "restart";
+			difficulty: DifficultyName;
+			seed?: number;
+			startingPlayer?: Player;
+	  }
+	| { type: "selectAction"; action: QuestionAction | null }
+	| { type: "askHuman" }
+	| { type: "runComputerTurn" }
+	| { type: "guessHuman"; guess: Code }
+	| { type: "setGuessColor"; index: number; color: Color }
+	| { type: "setGuessNumber"; index: number; number: string };
+
+function createGameAppState(options: InitialGameOptions): GameAppState {
+	return {
+		difficulty: options.difficulty,
+		game: createInitialGame(
+			options.difficulty,
+			options.seed,
+			options.startingPlayer,
+		),
+		selectedAction: null,
+		guessColors: emptyGuessColors,
+		guessNumbers: emptyGuessNumbers,
+	};
+}
+
+function gameAppReducer(
+	state: GameAppState,
+	action: GameAppAction,
+): GameAppState {
+	switch (action.type) {
+		case "restart":
+			return {
+				...state,
+				difficulty: action.difficulty,
+				game: createInitialGame(
+					action.difficulty,
+					action.seed,
+					action.startingPlayer,
+				),
+				selectedAction: null,
+				guessColors: emptyGuessColors,
+				guessNumbers: emptyGuessNumbers,
+			};
+		case "selectAction":
+			return {
+				...state,
+				selectedAction: action.action,
+			};
+		case "askHuman":
+			if (!state.selectedAction) {
+				return state;
+			}
+			return {
+				...state,
+				game: askQuestion(state.game, "human", state.selectedAction),
+				selectedAction: null,
+			};
+		case "runComputerTurn":
+			return {
+				...state,
+				game: runComputerTurn(state.game),
+			};
+		case "guessHuman":
+			return {
+				...state,
+				game: guessCode(state.game, "human", action.guess),
+			};
+		case "setGuessColor":
+			return {
+				...state,
+				guessColors: state.guessColors.map((item, itemIndex) =>
+					itemIndex === action.index
+						? item === action.color
+							? null
+							: action.color
+						: item,
+				),
+			};
+		case "setGuessNumber":
+			return {
+				...state,
+				guessNumbers: state.guessNumbers.map((item, itemIndex) =>
+					itemIndex === action.index ? action.number : item,
+				),
+			};
+	}
 }
 
 function makeGuessCode(
@@ -426,11 +529,11 @@ function MemoOverlay({
 	isOpen: boolean;
 	close: () => void;
 }) {
-	const [memo, setMemo] = useState("");
-
-	useEffect(() => {
-		setMemo(window.localStorage.getItem(memoStorageKey) ?? "");
-	}, []);
+	const [memo, setMemo] = useState(() =>
+		typeof window === "undefined"
+			? ""
+			: (window.localStorage.getItem(memoStorageKey) ?? ""),
+	);
 
 	function updateMemo(value: string) {
 		setMemo(value);
@@ -472,45 +575,72 @@ function MemoOverlay({
 	);
 }
 
-function StickyMemoButton() {
-	const overlayData = useOverlayData();
-	const isMemoOpen = overlayData[memoOverlayId]?.isOpen === true;
+function closeOverlayWithDelay(overlayId: string) {
+	overlay.close(overlayId);
+	window.setTimeout(() => overlay.unmount(overlayId), 150);
+}
 
-	function closeMemo() {
-		overlay.close(memoOverlayId);
-		window.setTimeout(() => overlay.unmount(memoOverlayId), 150);
-	}
+function openMemoOverlay() {
+	overlay.open(
+		({ isOpen, close, unmount }) => (
+			<MemoOverlay
+				close={() => {
+					close();
+					window.setTimeout(unmount, 150);
+				}}
+				isOpen={isOpen}
+			/>
+		),
+		{ overlayId: memoOverlayId },
+	);
+}
 
-	function toggleMemo() {
-		if (isMemoOpen) {
-			closeMemo();
-			return;
-		}
-
-		overlay.open(
-			({ isOpen, close, unmount }) => (
-				<MemoOverlay
-					close={() => {
-						close();
-						window.setTimeout(unmount, 150);
-					}}
-					isOpen={isOpen}
-				/>
-			),
-			{ overlayId: memoOverlayId },
-		);
+function BottomSheetOverlay({
+	children,
+	close,
+	isOpen,
+	label,
+	title,
+}: {
+	children: ReactNode;
+	close: () => void;
+	isOpen: boolean;
+	label: string;
+	title: string;
+}) {
+	if (!isOpen) {
+		return null;
 	}
 
 	return (
-		<button
-			aria-label={isMemoOpen ? "메모장 닫기" : "메모장 열기"}
-			className="fixed right-4 bottom-4 z-40 inline-flex min-h-12 items-center justify-center gap-2 border-2 border-black bg-white px-4 py-2 font-['Work_Sans'] font-bold text-black hover:bg-[#111114] hover:text-white"
-			onClick={toggleMemo}
-			type="button"
-		>
-			<NotebookPen aria-hidden="true" size={18} />
-			{isMemoOpen ? "닫기" : "메모"}
-		</button>
+		<div className="fixed inset-x-0 top-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-50 grid items-end p-0 md:inset-0 md:items-center md:p-6">
+			<button
+				aria-label={`${label} 닫기`}
+				className="absolute inset-0 bg-white/70 backdrop-blur-sm"
+				onClick={close}
+				type="button"
+			/>
+			<section
+				aria-label={label}
+				className="relative max-h-[82vh] overflow-y-auto border-t-2 border-black bg-white p-4 shadow-[0_-6px_0_#111114] md:mx-auto md:w-[min(760px,calc(100vw-3rem))] md:border-2 md:shadow-[6px_6px_0_#111114]"
+				role="dialog"
+			>
+				<div className="mb-3 flex items-center justify-between gap-3 border-b-2 border-black pb-2">
+					<h2 className="font-['Work_Sans'] text-base font-semibold">
+						{title}
+					</h2>
+					<button
+						aria-label={`${label} 닫기`}
+						className="grid size-9 place-items-center border-2 border-black bg-white hover:bg-[#111114] hover:text-white"
+						onClick={close}
+						type="button"
+					>
+						<X aria-hidden="true" size={18} />
+					</button>
+				</div>
+				{children}
+			</section>
+		</div>
 	);
 }
 
@@ -878,6 +1008,97 @@ function LogPanel({ state }: { state: GameState }) {
 	);
 }
 
+function QuickOverlayBar({ state }: { state: GameState }) {
+	const overlayData = useOverlayData();
+	const [activePanel, setActivePanel] = useState<"code" | "log" | null>(null);
+	const isMemoOpen = overlayData[memoOverlayId]?.isOpen === true;
+	const isCodeOpen = activePanel === "code";
+	const isLogOpen = activePanel === "log";
+
+	function toggleCode() {
+		if (isCodeOpen) {
+			setActivePanel(null);
+			return;
+		}
+
+		setActivePanel("code");
+	}
+
+	function toggleLog() {
+		if (isLogOpen) {
+			setActivePanel(null);
+			return;
+		}
+
+		setActivePanel("log");
+	}
+
+	function toggleMemo() {
+		if (isMemoOpen) {
+			closeOverlayWithDelay(memoOverlayId);
+			return;
+		}
+
+		openMemoOverlay();
+	}
+
+	return (
+		<>
+			<BottomSheetOverlay
+				close={() => setActivePanel(null)}
+				isOpen={isCodeOpen}
+				label="암호 오버레이"
+				title="암호"
+			>
+				<div className="grid gap-4">
+					<TileRack code={state.computerCode} hidden label="컴퓨터 암호" />
+					<TileRack code={state.humanCode} label="내 암호" />
+				</div>
+			</BottomSheetOverlay>
+			<BottomSheetOverlay
+				close={() => setActivePanel(null)}
+				isOpen={isLogOpen}
+				label="게임 기록 오버레이"
+				title="게임 기록"
+			>
+				<LogPanel state={state} />
+			</BottomSheetOverlay>
+			<nav
+				aria-label="빠른 보기"
+				className="fixed right-0 bottom-0 left-0 z-[60] grid grid-cols-3 border-t-2 border-black bg-white pb-[env(safe-area-inset-bottom)] md:right-4 md:bottom-4 md:left-auto md:flex md:border-2 md:pb-0"
+			>
+				<button
+					aria-pressed={isCodeOpen}
+					className="inline-flex min-h-14 items-center justify-center gap-2 border-r border-black px-3 font-['Work_Sans'] text-sm font-bold text-black hover:bg-[#111114] hover:text-white aria-pressed:bg-[#111114] aria-pressed:text-white md:hidden"
+					onClick={toggleCode}
+					type="button"
+				>
+					<KeyRound aria-hidden="true" size={17} />
+					암호
+				</button>
+				<button
+					aria-pressed={isLogOpen}
+					className="inline-flex min-h-14 items-center justify-center gap-2 border-r border-black px-3 font-['Work_Sans'] text-sm font-bold text-black hover:bg-[#111114] hover:text-white aria-pressed:bg-[#111114] aria-pressed:text-white md:hidden"
+					onClick={toggleLog}
+					type="button"
+				>
+					<ScrollText aria-hidden="true" size={17} />
+					기록
+				</button>
+				<button
+					aria-pressed={isMemoOpen}
+					className="inline-flex min-h-14 items-center justify-center gap-2 px-3 font-['Work_Sans'] text-sm font-bold text-black hover:bg-[#111114] hover:text-white aria-pressed:bg-[#111114] aria-pressed:text-white md:min-h-12 md:px-4"
+					onClick={toggleMemo}
+					type="button"
+				>
+					<NotebookPen aria-hidden="true" size={17} />
+					메모
+				</button>
+			</nav>
+		</>
+	);
+}
+
 export default function GameApp() {
 	const initialGameOptionsRef = useRef<ReturnType<
 		typeof getInitialGameOptions
@@ -890,25 +1111,20 @@ export default function GameApp() {
 	const startingPlayerRef = useRef(
 		initialGameOptionsRef.current.startingPlayer,
 	);
-	const [difficulty, setDifficulty] = useState<DifficultyName>(
-		initialGameOptionsRef.current.difficulty,
-	);
-	const [state, setState] = useState<GameState>(() =>
-		createInitialGame(
-			initialGameOptionsRef.current?.difficulty ?? "intermediate",
-			seedRef.current,
-			startingPlayerRef.current,
-		),
-	);
-	const [selectedAction, setSelectedAction] = useState<QuestionAction | null>(
-		null,
+	const [appState, dispatch] = useReducer(
+		gameAppReducer,
+		initialGameOptionsRef.current,
+		createGameAppState,
 	);
 	const savedResultKeyRef = useRef<string | null>(null);
-	const [guessColors, setGuessColors] =
-		useState<readonly (Color | null)[]>(emptyGuessColors);
-	const [guessNumbers, setGuessNumbers] =
-		useState<readonly string[]>(emptyGuessNumbers);
 	const openedResultKeyRef = useRef<string | null>(null);
+	const {
+		difficulty,
+		game: state,
+		guessColors,
+		guessNumbers,
+		selectedAction,
+	} = appState;
 
 	const currentGuess = useMemo(
 		() =>
@@ -927,7 +1143,7 @@ export default function GameApp() {
 		}
 
 		const timer = window.setTimeout(() => {
-			setState((current) => (current ? runComputerTurn(current) : current));
+			dispatch({ type: "runComputerTurn" });
 		}, 450);
 
 		return () => window.clearTimeout(timer);
@@ -987,37 +1203,27 @@ export default function GameApp() {
 		openedResultKeyRef.current = null;
 		overlay.close(resultOverlayId);
 		window.setTimeout(() => overlay.unmount(resultOverlayId), 150);
-		setDifficulty(nextDifficulty);
-		setSelectedAction(null);
 		savedResultKeyRef.current = null;
-		setGuessColors(emptyGuessColors);
-		setGuessNumbers(emptyGuessNumbers);
-		setState(
-			createInitialGame(
-				nextDifficulty,
-				seedRef.current,
-				startingPlayerRef.current,
-			),
-		);
+		dispatch({
+			type: "restart",
+			difficulty: nextDifficulty,
+			seed: seedRef.current,
+			startingPlayer: startingPlayerRef.current,
+		});
 	}
 
 	function handleAsk() {
 		if (!selectedAction) {
 			return;
 		}
-		setState((current) =>
-			current ? askQuestion(current, "human", selectedAction) : current,
-		);
-		setSelectedAction(null);
+		dispatch({ type: "askHuman" });
 	}
 
 	function handleGuess() {
 		if (!currentGuess) {
 			return;
 		}
-		setState((current) =>
-			current ? guessCode(current, "human", currentGuess) : current,
-		);
+		dispatch({ type: "guessHuman", guess: currentGuess });
 	}
 
 	const disabled = state.turn !== "human" || state.status !== "playing";
@@ -1031,7 +1237,7 @@ export default function GameApp() {
 				: "정답을 제출할 수 있습니다.";
 
 	return (
-		<main className="mx-auto max-w-[1600px] px-4 py-4 text-[#1a1a1a] md:px-6">
+		<main className="mx-auto max-w-[1600px] px-4 pt-4 pb-[calc(9rem+env(safe-area-inset-bottom))] text-[#1a1a1a] md:px-6 md:pb-4">
 			<section
 				className="grid gap-5 border-b-2 border-black py-5 md:grid-cols-[minmax(0,1fr)_260px] md:items-end"
 				aria-labelledby="game-title"
@@ -1072,13 +1278,6 @@ export default function GameApp() {
 							))}
 						</select>
 					</label>
-					<button
-						className={outlineButtonClass}
-						onClick={() => restart()}
-						type="button"
-					>
-						<RotateCcw aria-hidden="true" size={18} />새 게임
-					</button>
 				</fieldset>
 			</section>
 
@@ -1092,59 +1291,43 @@ export default function GameApp() {
 				</strong>
 			</section>
 
-			<div className="grid gap-5 xl:grid-cols-[minmax(280px,0.8fr)_minmax(440px,1.35fr)_minmax(280px,0.85fr)] xl:items-start">
-				<div className="grid content-start gap-5 xl:col-start-1 xl:row-start-1">
-					<TileRack code={state.computerCode} hidden label="컴퓨터 암호" />
-					<TileRack code={state.humanCode} label="내 암호" />
-				</div>
-
-				<div className="xl:col-start-2 xl:row-start-1">
+			<div className="grid gap-5 xl:grid-cols-[minmax(440px,1.35fr)_minmax(280px,0.85fr)] xl:items-start">
+				<div>
 					<QuestionPanel
 						onAsk={handleAsk}
-						onSelectAction={setSelectedAction}
+						onSelectAction={(action) =>
+							dispatch({ type: "selectAction", action })
+						}
 						selectedAction={selectedAction}
 						state={state}
 					/>
+					<div className="mt-5 hidden gap-4 md:grid">
+						<TileRack code={state.computerCode} hidden label="컴퓨터 암호" />
+						<TileRack code={state.humanCode} label="내 암호" />
+					</div>
 				</div>
 
-				<aside className="grid content-start gap-5 xl:col-start-3 xl:row-start-1">
+				<aside className="grid content-start gap-5">
 					<GuessPanel
 						colors={guessColors}
 						disabled={guessDisabled}
 						helperText={guessHelperText}
 						numbers={guessNumbers}
 						onColorChange={(index, color) =>
-							setGuessColors((current) =>
-								current.map((item, itemIndex) =>
-									itemIndex === index ? (item === color ? null : color) : item,
-								),
-							)
+							dispatch({ type: "setGuessColor", color, index })
 						}
 						onGuess={handleGuess}
 						onNumberChange={(index, number) =>
-							setGuessNumbers((current) =>
-								current.map((item, itemIndex) =>
-									itemIndex === index ? number : item,
-								),
-							)
+							dispatch({ type: "setGuessNumber", index, number })
 						}
 					/>
-					<LogPanel state={state} />
+					<div className="hidden md:block">
+						<LogPanel state={state} />
+					</div>
 				</aside>
 			</div>
 
-			<section
-				className="mt-5 flex items-start gap-3 border-y border-black py-3"
-				aria-label="룰 요약"
-			>
-				<ShieldQuestion aria-hidden="true" size={20} />
-				<p className="m-0 leading-6">
-					컴퓨터는 플레이어의 숨겨진 타일을 미리 보지 않습니다. 질문과 답을
-					바탕으로만 추리합니다. 선언할 암호:{" "}
-					{currentGuess ? formatCode(currentGuess) : "입력 전"}
-				</p>
-			</section>
-			<StickyMemoButton />
+			<QuickOverlayBar state={state} />
 		</main>
 	);
 }

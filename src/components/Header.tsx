@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Home } from "lucide-react";
 
 export default function Header() {
 	return (
@@ -14,6 +15,14 @@ export default function Header() {
 					BREAK THE CODE
 				</Link>
 				<div className="flex gap-3 font-['Work_Sans'] text-xs font-bold uppercase sm:gap-5 sm:text-sm">
+					<Link
+						activeProps={{ className: "text-[#057dbc] underline" }}
+						aria-label="홈"
+						className="inline-flex items-center gap-1 text-black no-underline hover:text-[#057dbc] hover:underline"
+						to="/"
+					>
+						<Home aria-hidden="true" size={15} />홈
+					</Link>
 					<Link
 						activeProps={{ className: "text-[#057dbc] underline" }}
 						className="text-black no-underline hover:text-[#057dbc] hover:underline"

@@ -15,27 +15,65 @@ function colorLabel(color: Tile["color"]) {
 }
 
 async function fillGuess(page: Page, code: readonly Tile[]) {
-	await code.reduce(async (previous, tile, index) => {
-		await previous;
+	await code.reduce<Promise<void>>(
+		(previous, tile, index) =>
+			previous
+				.then(() => {
+					const slot = String.fromCharCode(65 + index);
+					const colorButton = page.getByLabel(
+						`${slot} ${colorLabel(tile.color)} 선택`,
+					);
+					return colorButton
+						.click()
+						.then(() => colorButton.getAttribute("aria-pressed"))
+						.then((pressed) =>
+							pressed === "true"
+								? undefined
+								: colorButton.click({ force: true }),
+						);
+				})
+				.then(() =>
+					page.getByLabel(`${index + 1}번 숫자`).fill(String(tile.number)),
+				),
+		Promise.resolve(),
+	);
+}
 
-		const slot = String.fromCharCode(65 + index);
-		await page.getByLabel(`${slot} ${colorLabel(tile.color)} 선택`).click();
-		await page.getByLabel(`${index + 1}번 숫자`).fill(String(tile.number));
-	}, Promise.resolve());
+async function openMemo(page: Page) {
+	await page
+		.getByRole("navigation", { name: "빠른 보기" })
+		.getByRole("button", { name: "메모" })
+		.click();
 }
 
 test("mobile flow starts a game, asks a question, and receives an AI turn", async ({
 	page,
 }) => {
+	await page.setViewportSize({ height: 844, width: 390 });
 	await page.goto("/game?seed=31&difficulty=beginner&first=human");
 
 	await expect(
 		page.getByRole("heading", { name: "Break the Code" }),
 	).toBeVisible();
-	await expect(page.getByLabel("컴퓨터 암호").getByText("?")).toHaveCount(5);
 	await expect(page.getByLabel("질문 카드").getByRole("article")).toHaveCount(
 		6,
 	);
+
+	const mobileQuickView = page.getByRole("navigation", {
+		name: "빠른 보기",
+	});
+	await expect(mobileQuickView).toBeVisible();
+	await mobileQuickView.getByRole("button", { name: "암호" }).click();
+	const codeOverlay = page.getByRole("dialog", { name: "암호 오버레이" });
+	await expect(codeOverlay).toBeVisible();
+	await expect(
+		codeOverlay.getByRole("region", { name: "컴퓨터 암호" }).getByText("?"),
+	).toHaveCount(5);
+	await expect(
+		codeOverlay.getByRole("region", { name: "내 암호" }),
+	).toBeVisible();
+	await mobileQuickView.getByRole("button", { name: "암호" }).click();
+	await expect(codeOverlay).toHaveCount(0);
 
 	await page
 		.getByLabel("질문 카드")
@@ -44,12 +82,21 @@ test("mobile flow starts a game, asks a question, and receives an AI turn", asyn
 		.click();
 	await page.getByRole("button", { name: "질문하기" }).click();
 
-	await expect(page.getByText(/컴퓨터가|컴퓨터 추측/)).toBeVisible();
-	await expect(page.getByLabel("게임 기록")).toContainText("답:");
-	await expect(page.getByLabel("내 질문")).toBeVisible();
-	await expect(page.getByLabel("컴퓨터 질문")).toBeVisible();
+	await mobileQuickView.getByRole("button", { name: "기록" }).click();
+	const logOverlay = page.getByRole("dialog", { name: "게임 기록 오버레이" });
+	await expect(logOverlay).toBeVisible();
+	await expect(logOverlay.getByText(/컴퓨터가|컴퓨터 추측/)).toBeVisible();
+	await expect(
+		logOverlay.getByRole("region", { name: "게임 기록" }),
+	).toContainText("답:");
+	await expect(
+		logOverlay.getByRole("region", { name: "내 질문" }),
+	).toBeVisible();
+	await expect(
+		logOverlay.getByRole("region", { name: "컴퓨터 질문" }),
+	).toBeVisible();
 
-	const questionInfoToggle = page
+	const questionInfoToggle = logOverlay
 		.getByRole("button", { name: /질문 설명 토글/ })
 		.first();
 	await expect(questionInfoToggle).toHaveAttribute("aria-expanded", "false");
@@ -64,11 +111,20 @@ test("desktop layout exposes board, question cards, and deduction log", async ({
 	await page.setViewportSize({ width: 1366, height: 900 });
 	await page.goto("/game?seed=41&difficulty=expert&first=human");
 
+	await expect(page.getByLabel("질문 카드")).toBeVisible();
 	await expect(page.getByLabel("컴퓨터 암호")).toBeVisible();
 	await expect(page.getByLabel("내 암호")).toBeVisible();
-	await expect(page.getByLabel("질문 카드")).toBeVisible();
 	await expect(page.getByLabel("게임 기록")).toContainText("전문가 컴퓨터");
-	await expect(page.getByRole("button", { name: "메모장 열기" })).toBeVisible();
+	const quickView = page.getByRole("navigation", { name: "빠른 보기" });
+	await expect(quickView).toBeVisible();
+	await expect(quickView.getByRole("button", { name: "메모" })).toBeVisible();
+	await expect(quickView.getByRole("button", { name: "암호" })).toHaveCount(0);
+	await expect(quickView.getByRole("button", { name: "기록" })).toHaveCount(0);
+	await expect(
+		page.getByRole("navigation", { name: "주요 메뉴" }).getByRole("link", {
+			name: "홈",
+		}),
+	).toBeVisible();
 });
 
 test("sticky memo opens as an overlay and keeps local notes", async ({
@@ -76,14 +132,14 @@ test("sticky memo opens as an overlay and keeps local notes", async ({
 }) => {
 	await page.goto("/game?seed=61&difficulty=intermediate&first=human");
 
-	await page.getByRole("button", { name: "메모장 열기" }).click();
+	await openMemo(page);
 	await expect(page.getByRole("dialog", { name: "메모장" })).toBeVisible();
 
 	await page.getByLabel("게임 메모").fill("B는 파랑 후보, 7 확인 필요");
 	await page.getByRole("button", { name: "메모장 닫기" }).first().click();
 	await expect(page.getByRole("dialog", { name: "메모장" })).toHaveCount(0);
 
-	await page.getByRole("button", { name: "메모장 열기" }).click();
+	await openMemo(page);
 	await expect(page.getByLabel("게임 메모")).toHaveValue(
 		"B는 파랑 후보, 7 확인 필요",
 	);
@@ -123,7 +179,7 @@ test("wrong and correct guesses complete the human guess flow", async ({
 	await page.getByRole("button", { name: "추측 제출" }).click();
 	await expect(page.getByLabel("게임 기록")).toContainText("오답입니다.");
 
-	await page.getByRole("button", { name: "새 게임" }).click();
+	await page.reload();
 	await expect(page.getByRole("button", { name: "추측 제출" })).toBeDisabled();
 
 	await fillGuess(page, expected);
