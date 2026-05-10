@@ -1,0 +1,13 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Break the Code">
+  <rect width="64" height="64" fill="#ffffff"/>
+  <rect x="4" y="4" width="56" height="56" fill="#000000"/>
+  <g fill="#ffffff">
+    <rect x="14" y="13" width="8" height="38"/>
+    <rect x="22" y="13" width="22" height="8"/>
+    <rect x="22" y="28" width="20" height="8"/>
+    <rect x="22" y="43" width="22" height="8"/>
+    <rect x="42" y="19" width="8" height="11"/>
+    <rect x="42" y="34" width="8" height="11"/>
+  </g>
+  <path d="M48 10 L30 54" stroke="#000000" stroke-width="5" stroke-linecap="square"/>
+</svg>
