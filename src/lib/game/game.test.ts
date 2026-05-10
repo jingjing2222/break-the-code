@@ -130,6 +130,40 @@ describe("AI", () => {
 		).toBe(true);
 	});
 
+	it("learns from the human side of a shared information question", () => {
+		const state = createGame("advanced", createSeededRandom(17));
+		const card = QUESTION_CARDS.find(
+			(item) => item.id === "visible-key-at-position",
+		);
+		if (!card) throw new Error("Missing shared information card");
+
+		const action = {
+			cardId: card.id,
+			param: 0,
+			isSharedInfo: card.isSharedInfo,
+		};
+		const sharedAnswer = answerQuestion(action, state.humanCode);
+		const next = askQuestion(
+			{
+				...state,
+				turn: "human",
+				visibleQuestionCards: [card],
+				questionDeck: [],
+			},
+			"human",
+			action,
+		);
+
+		expect(next.computer.candidates.length).toBeLessThan(
+			state.computer.candidates.length,
+		);
+		expect(
+			next.computer.candidates.every(
+				(code) => answerQuestion(action, code) === sharedAnswer,
+			),
+		).toBe(true);
+	});
+
 	it("guesses when visible candidates collapse to a single code", () => {
 		const state = createGame("advanced", createSeededRandom(11));
 		const guess = shouldGuess([state.humanCode], DIFFICULTIES.advanced);

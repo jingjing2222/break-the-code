@@ -111,13 +111,21 @@ export function askQuestion(
 
 	const targetCode = actor === "human" ? state.computerCode : state.humanCode;
 	const answer = answerQuestion(action, targetCode);
+	const sharedAnswer = action.isSharedInfo
+		? answerQuestion(
+				action,
+				actor === "human" ? state.humanCode : state.computerCode,
+			)
+		: undefined;
 	const replacement = replaceQuestionCard(state, action.cardId);
 	const computer =
 		actor === "computer"
 			? observeAnswer(state.computer, action, answer)
-			: state.computer;
+			: sharedAnswer === undefined
+				? state.computer
+				: observeAnswer(state.computer, action, sharedAnswer);
 	const sharedText = action.isSharedInfo
-		? ` 공유 정보: 질문자도 ${answerQuestion(action, actor === "human" ? state.humanCode : state.computerCode)}라고 답합니다.`
+		? ` 공유 정보: 질문자도 ${sharedAnswer}라고 답합니다.`
 		: "";
 	const exhausted =
 		replacement.visibleQuestionCards.length === 0 &&
