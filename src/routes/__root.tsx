@@ -22,11 +22,33 @@ export const Route = createRootRoute({
 				name: "description",
 				content: "질문 카드로 상대의 다섯 타일을 먼저 맞히는 타기론 웹 게임.",
 			},
+			{
+				name: "theme-color",
+				content: "#000000",
+			},
 		],
 		links: [
 			{
 				rel: "stylesheet",
 				href: appCss,
+			},
+			{
+				rel: "icon",
+				href: "/favicon.svg",
+				type: "image/svg+xml",
+			},
+			{
+				rel: "icon",
+				href: "/favicon.ico",
+				sizes: "any",
+			},
+			{
+				rel: "apple-touch-icon",
+				href: "/apple-touch-icon.png",
+			},
+			{
+				rel: "manifest",
+				href: "/site.webmanifest",
 			},
 		],
 	}),
