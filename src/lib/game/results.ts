@@ -1,6 +1,6 @@
 import type { DifficultyName, GameState, GameStatus } from "./types";
 
-export const RESULT_STORAGE_KEY = "break-the-code:results:v1";
+const RESULT_STORAGE_KEY = "break-the-code:results:v1";
 
 export type StoredGameResult = {
 	id: string;

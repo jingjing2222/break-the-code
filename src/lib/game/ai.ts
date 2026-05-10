@@ -1,9 +1,7 @@
 import {
 	bucketCandidates,
-	expectedRemaining,
 	filterCandidates,
 	getVisibleCandidateGroups,
-	worstCaseRemaining,
 } from "./deduction";
 import { answerQuestion, generateLegalQuestionActions } from "./questions";
 import type {
@@ -157,7 +155,7 @@ function rarityScore(
 	return universe.length / matching;
 }
 
-export function getSharedInfoLeakPenalty(
+function getSharedInfoLeakPenalty(
 	action: QuestionAction,
 	myCode: Code,
 	universe: readonly Code[],
@@ -168,20 +166,7 @@ export function getSharedInfoLeakPenalty(
 	return rarityScore(action, myAnswer, universe);
 }
 
-export function opponentCardDanger(
-	opponentCandidates: readonly Code[],
-	action: QuestionAction,
-) {
-	if (opponentCandidates.length <= 1) return 0;
-
-	const current = opponentCandidates.length;
-	const expectedGain = current - expectedRemaining(opponentCandidates, action);
-	const worstGain = current - worstCaseRemaining(opponentCandidates, action);
-
-	return expectedGain + worstGain * 0.25;
-}
-
-export function opponentThreatLevel(opponentCandidates: readonly Code[]) {
+function opponentThreatLevel(opponentCandidates: readonly Code[]) {
 	const groups = getVisibleCandidateGroups(opponentCandidates);
 	const total = opponentCandidates.length;
 	const bestProbability =
@@ -299,7 +284,7 @@ export function evaluateQuestionAction(
 	};
 }
 
-export function lookaheadScore(
+function lookaheadScore(
 	candidates: readonly Code[],
 	actions: readonly QuestionAction[],
 	depth: number,
@@ -399,7 +384,7 @@ export function observeAnswer(
 	};
 }
 
-export function chooseQuestionAction(
+function chooseQuestionAction(
 	computer: ComputerPlayer,
 	visibleQuestionCards: readonly QuestionCard[],
 	random = Math.random,

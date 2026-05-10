@@ -248,13 +248,6 @@ export function runComputerTurn(
 	};
 }
 
-export function getDefaultHumanGuess(state: GameState) {
-	return state.humanCode.map((tile, index) => ({
-		...tile,
-		id: `guess-${index}-${tile.id}`,
-	}));
-}
-
 export function getLegalActionsForCard(state: GameState, cardId: string) {
 	return generateLegalQuestionActions(state.visibleQuestionCards).filter(
 		(action) => action.cardId === cardId,

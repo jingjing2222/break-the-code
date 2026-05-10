@@ -1,24 +1,26 @@
 import { describe, expect, it } from "vitest";
 import {
-	answerQuestion,
-	askQuestion,
 	chooseComputerTurn,
-	createDeck,
-	createGame,
-	createSeededRandom,
 	DIFFICULTIES,
 	evaluateQuestionAction,
-	filterCandidates,
-	formatCode,
-	generateLegalQuestionActions,
-	makeInitialCandidates,
 	observeAnswer,
-	QUESTION_CARDS,
 	questionPartitionStats,
 	shouldGuess,
+} from "./ai";
+import { filterCandidates, makeInitialCandidates } from "./deduction";
+import { askQuestion, createGame } from "./engine";
+import {
+	answerQuestion,
+	generateLegalQuestionActions,
+	QUESTION_CARDS,
+} from "./questions";
+import {
+	createDeck,
+	createSeededRandom,
+	formatCode,
 	sortCode,
 	visibleCodeKey,
-} from "./index";
+} from "./tiles";
 
 describe("tiles", () => {
 	it("creates 20 tiles and sorts by number then color rank", () => {

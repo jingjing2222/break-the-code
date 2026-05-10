@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { DIFFICULTIES } from "#/lib/game";
+import { useState } from "react";
+import { DIFFICULTIES } from "#/lib/game/ai";
 import {
 	clearStoredResults,
 	loadStoredResults,
@@ -12,24 +12,39 @@ export const Route = createFileRoute("/history")({
 	component: HistoryPage,
 });
 
-function resultLabel(result: StoredGameResult) {
+type ResultView = StoredGameResult & {
+	finishedAtLabel: string;
+};
+
+function toResultView(result: StoredGameResult): ResultView {
+	return {
+		...result,
+		finishedAtLabel: new Intl.DateTimeFormat("ko-KR", {
+			dateStyle: "medium",
+			timeStyle: "short",
+		}).format(Date.parse(result.finishedAt)),
+	};
+}
+
+function loadResultViews() {
+	if (typeof window === "undefined") return [];
+	return loadStoredResults(window.localStorage).map(toResultView);
+}
+
+function resultLabel(result: ResultView) {
 	if (result.winner === "human") return "승리";
 	if (result.winner === "computer") return "패배";
 	return "무승부";
 }
 
-function resultTone(result: StoredGameResult) {
-	if (result.winner === "human") return "bg-black text-white";
+function resultTone(result: ResultView) {
+	if (result.winner === "human") return "bg-[#111114] text-white";
 	if (result.winner === "computer") return "bg-white text-black";
 	return "bg-[#f2f2f2] text-black";
 }
 
 function HistoryPage() {
-	const [results, setResults] = useState<StoredGameResult[]>([]);
-
-	useEffect(() => {
-		setResults(loadStoredResults(window.localStorage));
-	}, []);
+	const [results, setResults] = useState<ResultView[]>(loadResultViews);
 
 	function clearHistory() {
 		clearStoredResults(window.localStorage);
@@ -57,7 +72,7 @@ function HistoryPage() {
 					</p>
 				</div>
 				<button
-					className="inline-flex min-h-11 items-center justify-center gap-2 border-2 border-black bg-white px-4 py-2 font-['Work_Sans'] font-bold uppercase text-black hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+					className="inline-flex min-h-11 items-center justify-center gap-2 border-2 border-black bg-white px-4 py-2 font-['Work_Sans'] font-bold uppercase text-black hover:bg-[#111114] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
 					disabled={results.length === 0}
 					onClick={clearHistory}
 					type="button"
@@ -88,7 +103,7 @@ function HistoryPage() {
 			</section>
 
 			<section className="border-t-2 border-black" aria-label="저장된 전적">
-				<div className="inline-flex min-h-8 items-center bg-black px-3 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px] text-white">
+				<div className="inline-flex min-h-8 items-center bg-[#111114] px-3 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px] text-white">
 					저장된 전적
 				</div>
 				{results.length === 0 ? (
@@ -113,7 +128,7 @@ function HistoryPage() {
 										{result.turnNumber}턴
 									</p>
 									<p className="mt-1 text-sm leading-6 text-[#555]">
-										{new Date(result.finishedAt).toLocaleString("ko-KR")}
+										{result.finishedAtLabel}
 									</p>
 								</div>
 							</li>

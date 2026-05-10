@@ -1,4 +1,4 @@
-export const COLORS = ["R", "B", "G"] as const;
+const COLORS = ["R", "B", "G"] as const;
 
 export type Color = (typeof COLORS)[number];
 
@@ -33,14 +33,6 @@ export type DifficultyName =
 	| "advanced"
 	| "expert";
 
-export type ScoreMode =
-	| "random_or_simple"
-	| "distinct_answer_count"
-	| "expected_remaining"
-	| "minimax_plus_lookahead";
-
-export type GuessMode = "risky" | "mostly_safe" | "safe" | "safe_or_forced";
-
 export type DifficultyConfig = {
 	name: DifficultyName;
 	label: string;
@@ -48,8 +40,12 @@ export type DifficultyConfig = {
 	clueDropRate: number;
 	randomMoveRate: number;
 	sampleLimit: number;
-	scoreMode: ScoreMode;
-	guessMode: GuessMode;
+	scoreMode:
+		| "random_or_simple"
+		| "distinct_answer_count"
+		| "expected_remaining"
+		| "minimax_plus_lookahead";
+	guessMode: "risky" | "mostly_safe" | "safe" | "safe_or_forced";
 	guessConfidence: number;
 	sharedInfoPenalty: number;
 	lookaheadDepth: number;

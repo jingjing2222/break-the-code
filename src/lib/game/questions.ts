@@ -16,6 +16,19 @@ function positionList(indexes: number[]) {
 		: indexes.map((index) => positionLabels[positions[index]]).join(", ");
 }
 
+function matchingPositions(
+	code: Code,
+	predicate: (tile: Code[number]) => boolean,
+) {
+	const indexes: number[] = [];
+
+	for (let index = 0; index < code.length; index += 1) {
+		if (predicate(code[index])) indexes.push(index);
+	}
+
+	return indexes;
+}
+
 function getNumberParam(action: QuestionAction) {
 	if (typeof action.param !== "number") return 0;
 	return action.param;
@@ -134,9 +147,7 @@ export const QUESTION_CARDS = [
 		answer: (action, code) => {
 			const target = getNumberParam(action);
 			return positionList(
-				code
-					.map((tile, index) => (tile.number === target ? index : -1))
-					.filter((index) => index >= 0),
+				matchingPositions(code, (tile) => tile.number === target),
 			);
 		},
 	},
@@ -149,9 +160,7 @@ export const QUESTION_CARDS = [
 		answer: (action, code) => {
 			const target = getStringParam(action);
 			return positionList(
-				code
-					.map((tile, index) => (tile.color === target ? index : -1))
-					.filter((index) => index >= 0),
+				matchingPositions(code, (tile) => tile.color === target),
 			);
 		},
 	},

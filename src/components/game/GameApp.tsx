@@ -10,36 +10,42 @@ import {
 } from "lucide-react";
 import { overlay, useOverlayData } from "overlay-kit";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { DIFFICULTIES } from "#/lib/game/ai";
 import {
 	askQuestion,
-	type Code,
-	type Color,
-	colorLabels,
 	createGame,
-	createSeededRandom,
-	DIFFICULTIES,
-	type DifficultyName,
+	getLegalActionsForCard,
+	guessCode,
+	runComputerTurn,
+} from "#/lib/game/engine";
+import {
 	formatAction,
 	formatAnswerForLog,
-	formatCode,
-	type GameState,
-	getLegalActionsForCard,
 	getQuestionCard,
-	guessCode,
-	type Player,
-	type QuestionAction,
-	runComputerTurn,
-	sortCode,
-} from "#/lib/game";
+} from "#/lib/game/questions";
 import { createStoredResult, saveStoredResult } from "#/lib/game/results";
+import {
+	colorLabels,
+	createSeededRandom,
+	formatCode,
+	sortCode,
+} from "#/lib/game/tiles";
+import type {
+	Code,
+	Color,
+	DifficultyName,
+	GameState,
+	Player,
+	QuestionAction,
+} from "#/lib/game/types";
 
 const colorOptions = ["R", "B", "G"] as const;
 const guessSlots = ["A", "B", "C", "D", "E"] as const;
 
 const ribbonClass =
-	"inline-flex min-h-8 items-center bg-black px-3 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px] text-white";
+	"inline-flex min-h-8 items-center bg-[#111114] px-3 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px] text-white";
 const outlineButtonClass =
-	"inline-flex min-h-11 items-center justify-center gap-2 border-2 border-black bg-white px-4 py-2 font-['Work_Sans'] font-bold uppercase text-black hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-50";
+	"inline-flex min-h-11 items-center justify-center gap-2 border-2 border-black bg-white px-4 py-2 font-['Work_Sans'] font-bold uppercase text-black hover:bg-[#111114] hover:text-white disabled:cursor-not-allowed disabled:opacity-50";
 const memoStorageKey = "break-the-code:memo:v1";
 const memoOverlayId = "game-memo";
 const resultOverlayId = "game-result";
@@ -80,6 +86,20 @@ function createInitialGame(
 		seed === undefined ? Math.random : createSeededRandom(seed),
 		startingPlayer,
 	);
+}
+
+function getInitialGameOptions(): {
+	difficulty: DifficultyName;
+	seed?: number;
+	startingPlayer?: Player;
+} {
+	const difficulty = getInitialDifficulty();
+
+	return {
+		difficulty,
+		seed: getInitialSeed(),
+		startingPlayer: getInitialStartingPlayer(),
+	};
 }
 
 function makeGuessCode(
@@ -171,8 +191,10 @@ function colorSwatchClass(color: Color, selected: boolean) {
 				? "border-[#1264a3] text-[#1264a3]"
 				: "border-[#22863a] text-[#22863a]";
 
-	return `min-h-10 border-2 px-2 font-['Work_Sans'] text-xs font-bold transition-colors hover:bg-black hover:text-white focus-visible:bg-black focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black ${
-		selected ? `${colorClass} bg-black text-white` : `${colorClass} bg-white`
+	return `min-h-10 border-2 px-2 font-['Work_Sans'] text-xs font-bold transition-colors hover:bg-[#111114] hover:text-white focus-visible:bg-[#111114] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black ${
+		selected
+			? `${colorClass} bg-[#111114] text-white`
+			: `${colorClass} bg-white`
 	}`;
 }
 
@@ -242,7 +264,7 @@ function QuestionPanel({
 									<HelpCircle aria-hidden="true" size={16} />
 								)}
 							</div>
-							<h3 className="mt-2 font-['Work_Sans'] text-base font-bold">
+							<h3 className="mt-2 font-['Work_Sans'] text-base font-semibold">
 								{card.title}
 							</h3>
 							<p className="mt-1 leading-6">{card.prompt}</p>
@@ -258,8 +280,8 @@ function QuestionPanel({
 											aria-pressed={selected}
 											className={`min-h-9 border border-black px-2 py-1 font-['Work_Sans'] text-xs ${
 												selected
-													? "bg-black text-white"
-													: "bg-white text-black hover:bg-black hover:text-white"
+													? "bg-[#111114] text-white"
+													: "bg-white text-black hover:bg-[#111114] hover:text-white"
 											}`}
 											key={actionKey}
 											onClick={() => onSelectAction(action)}
@@ -402,11 +424,11 @@ function MemoOverlay({
 			<div className="flex items-center justify-between gap-3 border-b-2 border-black pb-2">
 				<div className="flex items-center gap-2">
 					<NotebookPen aria-hidden="true" size={20} />
-					<h2 className="font-['Work_Sans'] text-base font-bold">메모장</h2>
+					<h2 className="font-['Work_Sans'] text-base font-semibold">메모장</h2>
 				</div>
 				<button
 					aria-label="메모장 닫기"
-					className="grid h-9 w-9 place-items-center border-2 border-black bg-white hover:bg-black hover:text-white"
+					className="grid size-9 place-items-center border-2 border-black bg-white hover:bg-[#111114] hover:text-white"
 					onClick={close}
 					type="button"
 				>
@@ -456,7 +478,7 @@ function StickyMemoButton() {
 	return (
 		<button
 			aria-label={isMemoOpen ? "메모장 닫기" : "메모장 열기"}
-			className="fixed right-4 bottom-4 z-40 inline-flex min-h-12 items-center justify-center gap-2 border-2 border-black bg-white px-4 py-2 font-['Work_Sans'] font-bold text-black hover:bg-black hover:text-white"
+			className="fixed right-4 bottom-4 z-40 inline-flex min-h-12 items-center justify-center gap-2 border-2 border-black bg-white px-4 py-2 font-['Work_Sans'] font-bold text-black hover:bg-[#111114] hover:text-white"
 			onClick={toggleMemo}
 			type="button"
 		>
@@ -494,7 +516,7 @@ function ResultOverlay({
 			>
 				<svg
 					aria-hidden="true"
-					className="mx-auto h-44 w-44"
+					className="mx-auto size-44"
 					viewBox="0 0 180 180"
 				>
 					<title>{copy.title}</title>
@@ -603,7 +625,7 @@ function QuestionInfoToggle({ action }: { action: QuestionAction }) {
 			<button
 				aria-expanded={open}
 				aria-label={`${actionLabel} 질문 설명 토글`}
-				className="mx-1 inline-flex min-h-7 items-center gap-1 border border-black bg-white px-2 py-0.5 font-['Work_Sans'] text-xs font-bold text-black transition-colors hover:bg-black hover:text-white focus-visible:bg-black focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+				className="mx-1 inline-flex min-h-7 items-center gap-1 border border-black bg-white px-2 py-0.5 font-['Work_Sans'] text-xs font-bold text-black transition-colors hover:bg-[#111114] hover:text-white focus-visible:bg-[#111114] focus-visible:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
 				onClick={() => setPinned((current) => !current)}
 				onMouseEnter={() => setHovered(true)}
 				onMouseLeave={() => setHovered(false)}
@@ -785,7 +807,9 @@ function LogPanel({ state }: { state: GameState }) {
 			</div>
 			<div className="mt-3 grid gap-3 md:grid-cols-2">
 				<section className="border-2 border-black p-3" aria-label="내 질문">
-					<h3 className="font-['Work_Sans'] text-base font-bold">내 질문</h3>
+					<h3 className="font-['Work_Sans'] text-base font-semibold">
+						내 질문
+					</h3>
 					<div className="mt-3">
 						<LogEntryList
 							emptyText="아직 내가 질문하지 않았습니다."
@@ -794,7 +818,7 @@ function LogPanel({ state }: { state: GameState }) {
 					</div>
 				</section>
 				<section className="border-2 border-black p-3" aria-label="컴퓨터 질문">
-					<h3 className="font-['Work_Sans'] text-base font-bold">
+					<h3 className="font-['Work_Sans'] text-base font-semibold">
 						컴퓨터 질문
 					</h3>
 					<div className="mt-3">
@@ -810,7 +834,9 @@ function LogPanel({ state }: { state: GameState }) {
 					className="mt-3 border border-black p-3"
 					aria-label="그 외 기록"
 				>
-					<h3 className="font-['Work_Sans'] text-sm font-bold">그 외 기록</h3>
+					<h3 className="font-['Work_Sans'] text-sm font-semibold">
+						그 외 기록
+					</h3>
 					<ul className="mt-2 grid list-none gap-2 p-0">
 						{otherEntries.map((entry) => (
 							<li className="text-sm leading-6 text-[#555]" key={entry.id}>
@@ -825,14 +851,31 @@ function LogPanel({ state }: { state: GameState }) {
 }
 
 export default function GameApp() {
-	const [difficulty, setDifficulty] = useState<DifficultyName>("intermediate");
-	const [seed, setSeed] = useState<number | undefined>();
-	const [startingPlayer, setStartingPlayer] = useState<Player | undefined>();
-	const [state, setState] = useState<GameState | null>(null);
+	const initialGameOptionsRef = useRef<ReturnType<
+		typeof getInitialGameOptions
+	> | null>(null);
+	if (initialGameOptionsRef.current === null) {
+		initialGameOptionsRef.current = getInitialGameOptions();
+	}
+
+	const seedRef = useRef(initialGameOptionsRef.current.seed);
+	const startingPlayerRef = useRef(
+		initialGameOptionsRef.current.startingPlayer,
+	);
+	const [difficulty, setDifficulty] = useState<DifficultyName>(
+		initialGameOptionsRef.current.difficulty,
+	);
+	const [state, setState] = useState<GameState>(() =>
+		createInitialGame(
+			initialGameOptionsRef.current?.difficulty ?? "intermediate",
+			seedRef.current,
+			startingPlayerRef.current,
+		),
+	);
 	const [selectedAction, setSelectedAction] = useState<QuestionAction | null>(
 		null,
 	);
-	const [savedResultKey, setSavedResultKey] = useState<string | null>(null);
+	const savedResultKeyRef = useRef<string | null>(null);
 	const [guessColors, setGuessColors] =
 		useState<readonly (Color | null)[]>(emptyGuessColors);
 	const [guessNumbers, setGuessNumbers] =
@@ -851,20 +894,6 @@ export default function GameApp() {
 	const resultLogId = state?.log[0]?.id;
 
 	useEffect(() => {
-		const initialDifficulty = getInitialDifficulty();
-		const initialSeed = getInitialSeed();
-		const initialStartingPlayer = getInitialStartingPlayer();
-
-		setDifficulty(initialDifficulty);
-		setSeed(initialSeed);
-		setStartingPlayer(initialStartingPlayer);
-		setState(
-			createInitialGame(initialDifficulty, initialSeed, initialStartingPlayer),
-		);
-	}, []);
-
-	useEffect(() => {
-		if (!state) return;
 		if (state.turn !== "computer" || state.status !== "playing") return;
 
 		const timer = window.setTimeout(() => {
@@ -875,17 +904,17 @@ export default function GameApp() {
 	}, [state]);
 
 	useEffect(() => {
-		if (!state || state.status === "playing") return;
+		if (state.status === "playing") return;
 
 		const resultKey = `${state.status}-${state.turnNumber}-${state.log[0]?.id}`;
-		if (savedResultKey === resultKey) return;
+		if (savedResultKeyRef.current === resultKey) return;
 
 		const result = createStoredResult(state);
 		if (!result) return;
 
 		saveStoredResult(window.localStorage, result);
-		setSavedResultKey(resultKey);
-	}, [savedResultKey, state]);
+		savedResultKeyRef.current = resultKey;
+	}, [state]);
 
 	useEffect(() => {
 		if (!resultStatus) return;
@@ -920,10 +949,16 @@ export default function GameApp() {
 		window.setTimeout(() => overlay.unmount(resultOverlayId), 150);
 		setDifficulty(nextDifficulty);
 		setSelectedAction(null);
-		setSavedResultKey(null);
+		savedResultKeyRef.current = null;
 		setGuessColors(emptyGuessColors);
 		setGuessNumbers(emptyGuessNumbers);
-		setState(createInitialGame(nextDifficulty, seed, startingPlayer));
+		setState(
+			createInitialGame(
+				nextDifficulty,
+				seedRef.current,
+				startingPlayerRef.current,
+			),
+		);
 	}
 
 	function handleAsk() {
@@ -938,20 +973,6 @@ export default function GameApp() {
 		if (!currentGuess) return;
 		setState((current) =>
 			current ? guessCode(current, "human", currentGuess) : current,
-		);
-	}
-
-	if (!state) {
-		return (
-			<main className="mx-auto max-w-[1600px] px-4 py-4 md:px-6">
-				<section
-					className="my-4 flex min-h-11 items-center justify-between gap-4 bg-black px-3 font-['Space_Mono'] text-xs uppercase tracking-[1px] text-white"
-					aria-live="polite"
-				>
-					<span>게임 준비 중</span>
-					<strong>준비 중</strong>
-				</section>
-			</main>
 		);
 	}
 
@@ -1018,7 +1039,7 @@ export default function GameApp() {
 			</section>
 
 			<section
-				className="my-4 flex min-h-11 items-center justify-between gap-4 bg-black px-3 font-['Space_Mono'] text-xs uppercase tracking-[1px] text-white"
+				className="my-4 flex min-h-11 items-center justify-between gap-4 bg-[#111114] px-3 font-['Space_Mono'] text-xs uppercase tracking-[1px] text-white"
 				aria-live="polite"
 			>
 				<span>{statusText(state)}</span>

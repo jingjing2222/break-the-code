@@ -1,15 +1,23 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
-import {
-	createGame,
-	createSeededRandom,
-	type Tile,
-	visibleCodeKey,
-} from "../../src/lib/game";
+import { createGame } from "../../src/lib/game/engine";
+import { createSeededRandom, visibleCodeKey } from "../../src/lib/game/tiles";
+import type { Tile } from "../../src/lib/game/types";
 
 function colorLabel(color: Tile["color"]) {
 	if (color === "R") return "빨강";
 	if (color === "B") return "파랑";
 	return "초록";
+}
+
+async function fillGuess(page: Page, code: readonly Tile[]) {
+	await code.reduce(async (previous, tile, index) => {
+		await previous;
+
+		const slot = String.fromCharCode(65 + index);
+		await page.getByLabel(`${slot} ${colorLabel(tile.color)} 선택`).click();
+		await page.getByLabel(`${index + 1}번 숫자`).fill(String(tile.number));
+	}, Promise.resolve());
 }
 
 test("mobile flow starts a game, asks a question, and receives an AI turn", async ({
@@ -105,15 +113,7 @@ test("wrong and correct guesses complete the human guess flow", async ({
 	const wrong = expected.map((tile, index) =>
 		index === 0 ? { ...tile, number: (tile.number + 1) % 10 } : tile,
 	);
-	for (let index = 0; index < wrong.length; index += 1) {
-		const slot = String.fromCharCode(65 + index);
-		await page
-			.getByLabel(`${slot} ${colorLabel(wrong[index].color)} 선택`)
-			.click();
-		await page
-			.getByLabel(`${index + 1}번 숫자`)
-			.fill(String(wrong[index].number));
-	}
+	await fillGuess(page, wrong);
 
 	await expect(page.getByRole("button", { name: "추측 제출" })).toBeEnabled();
 	await page.getByRole("button", { name: "추측 제출" }).click();
@@ -122,15 +122,7 @@ test("wrong and correct guesses complete the human guess flow", async ({
 	await page.getByRole("button", { name: "새 게임" }).click();
 	await expect(page.getByRole("button", { name: "추측 제출" })).toBeDisabled();
 
-	for (let index = 0; index < expected.length; index += 1) {
-		const slot = String.fromCharCode(65 + index);
-		await page
-			.getByLabel(`${slot} ${colorLabel(expected[index].color)} 선택`)
-			.click();
-		await page
-			.getByLabel(`${index + 1}번 숫자`)
-			.fill(String(expected[index].number));
-	}
+	await fillGuess(page, expected);
 
 	await expect(page.getByRole("button", { name: "추측 제출" })).toBeEnabled();
 	await page.getByRole("button", { name: "추측 제출" }).click();

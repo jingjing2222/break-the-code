@@ -24,7 +24,7 @@ function About() {
 				</div>
 			</section>
 			<section className="mt-5 border-t-2 border-black">
-				<div className="inline-flex min-h-8 items-center bg-black px-3 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px] text-white">
+				<div className="inline-flex min-h-8 items-center bg-[#111114] px-3 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px] text-white">
 					핵심 룰
 				</div>
 				<ol className="mt-3 list-decimal space-y-2 pl-6 leading-7">

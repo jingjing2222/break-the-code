@@ -23,7 +23,7 @@ function Home() {
 					</p>
 				</div>
 				<Link
-					className="inline-flex min-h-12 items-center justify-center gap-2 border-2 border-black bg-white px-5 py-3 font-['Work_Sans'] font-bold uppercase text-black no-underline hover:bg-black hover:text-white"
+					className="inline-flex min-h-12 items-center justify-center gap-2 border-2 border-black bg-white px-5 py-3 font-['Work_Sans'] font-bold uppercase text-black no-underline hover:bg-[#111114] hover:text-white"
 					to="/game"
 				>
 					게임 시작
@@ -50,10 +50,10 @@ function Home() {
 					},
 				].map((item) => (
 					<article className="border border-black p-4" key={item.title}>
-						<div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-black">
+						<div className="mb-4 inline-flex size-10 items-center justify-center rounded-full border border-black">
 							<item.icon aria-hidden="true" size={20} />
 						</div>
-						<h2 className="font-['Work_Sans'] text-lg font-bold">
+						<h2 className="font-['Work_Sans'] text-lg font-semibold">
 							{item.title}
 						</h2>
 						<p className="mt-2 leading-7">{item.body}</p>

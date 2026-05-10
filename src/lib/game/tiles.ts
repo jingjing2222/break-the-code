@@ -1,6 +1,6 @@
 import type { Code, Color, Tile } from "./types";
 
-export const colorRank = {
+const colorRank = {
 	R: 0,
 	B: 1,
 	G: 2,
@@ -26,7 +26,7 @@ export function createDeck() {
 }
 
 export function sortCode(code: Tile[]): Code {
-	return [...code].sort((a, b) => {
+	return code.toSorted((a, b) => {
 		if (a.number !== b.number) return a.number - b.number;
 		return colorRank[a.color] - colorRank[b.color];
 	});
