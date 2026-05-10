@@ -13,11 +13,15 @@ export type StoredGameResult = {
 };
 
 function parseResults(value: string | null) {
-	if (!value) return [];
+	if (!value) {
+		return [];
+	}
 
 	try {
 		const parsed = JSON.parse(value);
-		if (!Array.isArray(parsed)) return [];
+		if (!Array.isArray(parsed)) {
+			return [];
+		}
 		return parsed.filter(
 			(item): item is StoredGameResult =>
 				typeof item?.id === "string" &&
@@ -38,7 +42,9 @@ export function loadStoredResults(storage: Storage) {
 }
 
 export function createStoredResult(state: GameState): StoredGameResult | null {
-	if (state.status === "playing") return null;
+	if (state.status === "playing") {
+		return null;
+	}
 
 	const winner =
 		state.status === "human-won"

@@ -168,7 +168,9 @@ describe("AI", () => {
 		const card = QUESTION_CARDS.find(
 			(item) => item.id === "visible-key-at-position",
 		);
-		if (!card) throw new Error("Missing shared information card");
+		if (!card) {
+			throw new Error("Missing shared information card");
+		}
 
 		const action = {
 			cardId: card.id,
@@ -202,7 +204,9 @@ describe("AI", () => {
 		const card = QUESTION_CARDS.find(
 			(item) => item.id === "visible-key-at-position",
 		);
-		if (!card) throw new Error("Missing shared information card");
+		if (!card) {
+			throw new Error("Missing shared information card");
+		}
 
 		const action = {
 			cardId: card.id,

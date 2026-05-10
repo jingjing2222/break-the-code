@@ -5,8 +5,12 @@ import { createSeededRandom, visibleCodeKey } from "../../src/lib/game/tiles";
 import type { Tile } from "../../src/lib/game/types";
 
 function colorLabel(color: Tile["color"]) {
-	if (color === "R") return "빨강";
-	if (color === "B") return "파랑";
+	if (color === "R") {
+		return "빨강";
+	}
+	if (color === "B") {
+		return "파랑";
+	}
 	return "초록";
 }
 

@@ -110,7 +110,9 @@ export function askQuestion(
 	actor: Player,
 	action: QuestionAction,
 ): GameState {
-	if (state.status !== "playing" || state.turn !== actor) return state;
+	if (state.status !== "playing" || state.turn !== actor) {
+		return state;
+	}
 
 	const targetCode = actor === "human" ? state.computerCode : state.humanCode;
 	const answer = answerQuestion(action, targetCode);
@@ -180,7 +182,9 @@ export function guessCode(
 	actor: Player,
 	guess: Code,
 ): GameState {
-	if (state.status !== "playing" || state.turn !== actor) return state;
+	if (state.status !== "playing" || state.turn !== actor) {
+		return state;
+	}
 
 	const targetCode = actor === "human" ? state.computerCode : state.humanCode;
 	const correct = visibleCodeKey(guess) === visibleCodeKey(targetCode);
@@ -214,7 +218,9 @@ export function runComputerTurn(
 	state: GameState,
 	random = Math.random,
 ): GameState {
-	if (state.status !== "playing" || state.turn !== "computer") return state;
+	if (state.status !== "playing" || state.turn !== "computer") {
+		return state;
+	}
 
 	const decision = chooseComputerTurn(
 		state.computer,

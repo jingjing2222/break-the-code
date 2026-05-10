@@ -3,8 +3,12 @@ import { sortCode, visibleCodeKey } from "./tiles";
 import type { Answer, Code, QuestionAction, Tile } from "./types";
 
 function combinations<T>(items: readonly T[], size: number): T[][] {
-	if (size === 0) return [[]] as T[][];
-	if (items.length < size) return [] as T[][];
+	if (size === 0) {
+		return [[]] as T[][];
+	}
+	if (items.length < size) {
+		return [] as T[][];
+	}
 
 	const [head, ...tail] = items;
 

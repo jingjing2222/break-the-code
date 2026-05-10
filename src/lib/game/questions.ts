@@ -23,19 +23,25 @@ function matchingPositions(
 	const indexes: number[] = [];
 
 	for (let index = 0; index < code.length; index += 1) {
-		if (predicate(code[index])) indexes.push(index);
+		if (predicate(code[index])) {
+			indexes.push(index);
+		}
 	}
 
 	return indexes;
 }
 
 function getNumberParam(action: QuestionAction) {
-	if (typeof action.param !== "number") return 0;
+	if (typeof action.param !== "number") {
+		return 0;
+	}
 	return action.param;
 }
 
 function getStringParam(action: QuestionAction) {
-	if (typeof action.param !== "string") return "";
+	if (typeof action.param !== "string") {
+		return "";
+	}
 	return action.param;
 }
 
@@ -55,7 +61,9 @@ function groupsFromAdjacent(
 
 	for (let index = 0; index < code.length - 1; index += 1) {
 		if (predicate(code[index], code[index + 1])) {
-			if (current.length === 0) current = [index];
+			if (current.length === 0) {
+				current = [index];
+			}
 			current.push(index + 1);
 		} else if (current.length > 0) {
 			groups.push(current);
@@ -63,7 +71,9 @@ function groupsFromAdjacent(
 		}
 	}
 
-	if (current.length > 0) groups.push(current);
+	if (current.length > 0) {
+		groups.push(current);
+	}
 
 	return groups.length === 0
 		? "없음"
@@ -268,7 +278,9 @@ export function generateLegalQuestionActions(
 
 export function getQuestionCard(cardId: string, cards = QUESTION_CARDS) {
 	const card = cards.find((item) => item.id === cardId);
-	if (!card) throw new Error(`Unknown question card: ${cardId}`);
+	if (!card) {
+		throw new Error(`Unknown question card: ${cardId}`);
+	}
 	return card;
 }
 
@@ -306,8 +318,12 @@ export function formatAnswerForLog(answer: unknown) {
 		)}`;
 	}
 
-	if (value === "true") return "예";
-	if (value === "false") return "아니요";
+	if (value === "true") {
+		return "예";
+	}
+	if (value === "false") {
+		return "아니요";
+	}
 	return value;
 }
 

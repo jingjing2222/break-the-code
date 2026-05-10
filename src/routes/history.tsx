@@ -27,19 +27,29 @@ function toResultView(result: StoredGameResult): ResultView {
 }
 
 function loadResultViews() {
-	if (typeof window === "undefined") return [];
+	if (typeof window === "undefined") {
+		return [];
+	}
 	return loadStoredResults(window.localStorage).map(toResultView);
 }
 
 function resultLabel(result: ResultView) {
-	if (result.winner === "human") return "승리";
-	if (result.winner === "computer") return "패배";
+	if (result.winner === "human") {
+		return "승리";
+	}
+	if (result.winner === "computer") {
+		return "패배";
+	}
 	return "무승부";
 }
 
 function resultTone(result: ResultView) {
-	if (result.winner === "human") return "bg-[#111114] text-white";
-	if (result.winner === "computer") return "bg-white text-black";
+	if (result.winner === "human") {
+		return "bg-[#111114] text-white";
+	}
+	if (result.winner === "computer") {
+		return "bg-white text-black";
+	}
 	return "bg-[#f2f2f2] text-black";
 }
 

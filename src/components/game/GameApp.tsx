@@ -53,7 +53,9 @@ const emptyGuessColors = [null, null, null, null, null] as const;
 const emptyGuessNumbers = ["", "", "", "", ""] as const;
 
 function getInitialDifficulty() {
-	if (typeof window === "undefined") return "intermediate";
+	if (typeof window === "undefined") {
+		return "intermediate";
+	}
 	const difficulty = new URLSearchParams(window.location.search).get(
 		"difficulty",
 	);
@@ -63,15 +65,21 @@ function getInitialDifficulty() {
 }
 
 function getInitialSeed() {
-	if (typeof window === "undefined") return undefined;
+	if (typeof window === "undefined") {
+		return undefined;
+	}
 	const raw = new URLSearchParams(window.location.search).get("seed");
-	if (!raw) return undefined;
+	if (!raw) {
+		return undefined;
+	}
 	const seed = Number(raw);
 	return Number.isFinite(seed) ? seed : undefined;
 }
 
 function getInitialStartingPlayer() {
-	if (typeof window === "undefined") return undefined;
+	if (typeof window === "undefined") {
+		return undefined;
+	}
 	const first = new URLSearchParams(window.location.search).get("first");
 	return first === "human" || first === "computer" ? first : undefined;
 }
@@ -126,10 +134,18 @@ function hasAllGuessNumbers(numbers: readonly string[]) {
 }
 
 function statusText(state: GameState) {
-	if (state.status === "human-won") return "플레이어가 암호를 해독했습니다.";
-	if (state.status === "computer-won") return "컴퓨터가 먼저 해독했습니다.";
-	if (state.status === "tie") return "동점입니다.";
-	if (state.status === "exhausted") return "질문 카드가 모두 소진되었습니다.";
+	if (state.status === "human-won") {
+		return "플레이어가 암호를 해독했습니다.";
+	}
+	if (state.status === "computer-won") {
+		return "컴퓨터가 먼저 해독했습니다.";
+	}
+	if (state.status === "tie") {
+		return "동점입니다.";
+	}
+	if (state.status === "exhausted") {
+		return "질문 카드가 모두 소진되었습니다.";
+	}
 	return state.turn === "human" ? "플레이어 차례" : "컴퓨터 차례";
 }
 
@@ -172,14 +188,22 @@ function isFinishedStatus(
 }
 
 function logKindLabel(kind: GameState["log"][number]["kind"]) {
-	if (kind === "ask") return "질문";
-	if (kind === "guess") return "정답 선언";
+	if (kind === "ask") {
+		return "질문";
+	}
+	if (kind === "guess") {
+		return "정답 선언";
+	}
 	return "안내";
 }
 
 function tileColorClass(color: Color) {
-	if (color === "R") return "border-t-[#c62828]";
-	if (color === "B") return "border-t-[#1264a3]";
+	if (color === "R") {
+		return "border-t-[#c62828]";
+	}
+	if (color === "B") {
+		return "border-t-[#1264a3]";
+	}
 	return "border-t-[#22863a]";
 }
 
@@ -413,7 +437,9 @@ function MemoOverlay({
 		window.localStorage.setItem(memoStorageKey, value);
 	}
 
-	if (!isOpen) return null;
+	if (!isOpen) {
+		return null;
+	}
 
 	return (
 		<div
@@ -499,7 +525,9 @@ function ResultOverlay({
 }) {
 	const copy = resultText(status);
 
-	if (!isOpen) return null;
+	if (!isOpen) {
+		return null;
+	}
 
 	return (
 		<div className="fixed inset-0 z-[60] grid place-items-center p-4">
@@ -894,7 +922,9 @@ export default function GameApp() {
 	const resultLogId = state?.log[0]?.id;
 
 	useEffect(() => {
-		if (state.turn !== "computer" || state.status !== "playing") return;
+		if (state.turn !== "computer" || state.status !== "playing") {
+			return;
+		}
 
 		const timer = window.setTimeout(() => {
 			setState((current) => (current ? runComputerTurn(current) : current));
@@ -904,20 +934,28 @@ export default function GameApp() {
 	}, [state]);
 
 	useEffect(() => {
-		if (state.status === "playing") return;
+		if (state.status === "playing") {
+			return;
+		}
 
 		const resultKey = `${state.status}-${state.turnNumber}-${state.log[0]?.id}`;
-		if (savedResultKeyRef.current === resultKey) return;
+		if (savedResultKeyRef.current === resultKey) {
+			return;
+		}
 
 		const result = createStoredResult(state);
-		if (!result) return;
+		if (!result) {
+			return;
+		}
 
 		saveStoredResult(window.localStorage, result);
 		savedResultKeyRef.current = resultKey;
 	}, [state]);
 
 	useEffect(() => {
-		if (!resultStatus) return;
+		if (!resultStatus) {
+			return;
+		}
 		if (!isFinishedStatus(resultStatus)) {
 			openedResultKeyRef.current = null;
 			return;
@@ -925,7 +963,9 @@ export default function GameApp() {
 
 		const finishedStatus = resultStatus;
 		const resultKey = `${resultStatus}-${resultTurnNumber}-${resultLogId}`;
-		if (openedResultKeyRef.current === resultKey) return;
+		if (openedResultKeyRef.current === resultKey) {
+			return;
+		}
 		openedResultKeyRef.current = resultKey;
 
 		overlay.open(
@@ -962,7 +1002,9 @@ export default function GameApp() {
 	}
 
 	function handleAsk() {
-		if (!selectedAction) return;
+		if (!selectedAction) {
+			return;
+		}
 		setState((current) =>
 			current ? askQuestion(current, "human", selectedAction) : current,
 		);
@@ -970,7 +1012,9 @@ export default function GameApp() {
 	}
 
 	function handleGuess() {
-		if (!currentGuess) return;
+		if (!currentGuess) {
+			return;
+		}
 		setState((current) =>
 			current ? guessCode(current, "human", currentGuess) : current,
 		);

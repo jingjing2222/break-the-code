@@ -27,7 +27,9 @@ export function createDeck() {
 
 export function sortCode(code: Tile[]): Code {
 	return code.toSorted((a, b) => {
-		if (a.number !== b.number) return a.number - b.number;
+		if (a.number !== b.number) {
+			return a.number - b.number;
+		}
 		return colorRank[a.color] - colorRank[b.color];
 	});
 }
@@ -50,7 +52,9 @@ export function formatCode(code: Code) {
 
 export function createSeededRandom(seed: number) {
 	let value = seed % 2147483647;
-	if (value <= 0) value += 2147483646;
+	if (value <= 0) {
+		value += 2147483646;
+	}
 
 	return () => {
 		value = (value * 16807) % 2147483647;

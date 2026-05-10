@@ -117,7 +117,9 @@ function randomSample<T>(
 	limit: number,
 	random = Math.random,
 ) {
-	if (!Number.isFinite(limit) || items.length <= limit) return [...items];
+	if (!Number.isFinite(limit) || items.length <= limit) {
+		return [...items];
+	}
 
 	const pool = [...items];
 	const sample: T[] = [];
@@ -138,7 +140,9 @@ function minBy<T>(items: readonly T[], score: (item: T) => number) {
 }
 
 function safeRatio(value: number, total: number) {
-	if (total <= 0) return 0;
+	if (total <= 0) {
+		return 0;
+	}
 	return value / total;
 }
 
@@ -150,7 +154,9 @@ function rarityScore(
 	const matching = universe.filter(
 		(code) => String(answerQuestion(action, code)) === String(answer),
 	).length;
-	if (matching === 0) return 5;
+	if (matching === 0) {
+		return 5;
+	}
 
 	return universe.length / matching;
 }
@@ -160,7 +166,9 @@ function getSharedInfoLeakPenalty(
 	myCode: Code,
 	universe: readonly Code[],
 ) {
-	if (!action.isSharedInfo) return 0;
+	if (!action.isSharedInfo) {
+		return 0;
+	}
 
 	const myAnswer = answerQuestion(action, myCode);
 	return rarityScore(action, myAnswer, universe);
@@ -291,7 +299,9 @@ function lookaheadScore(
 	myCode: Code,
 	universe: readonly Code[],
 ) {
-	if (depth === 0 || candidates.length <= 1) return candidates.length;
+	if (depth === 0 || candidates.length <= 1) {
+		return candidates.length;
+	}
 
 	let best = Number.POSITIVE_INFINITY;
 
@@ -308,7 +318,9 @@ function lookaheadScore(
 
 		const score =
 			expectedAfter + getSharedInfoLeakPenalty(action, myCode, universe);
-		if (score < best) best = score;
+		if (score < best) {
+			best = score;
+		}
 	}
 
 	return best;
@@ -329,8 +341,12 @@ export function shouldGuess(
 		.sort((a, b) => b.probability - a.probability);
 
 	const best = sorted[0];
-	if (!best) return null;
-	if (groups.size === 1) return best.representative;
+	if (!best) {
+		return null;
+	}
+	if (groups.size === 1) {
+		return best.representative;
+	}
 
 	const opponentCandidates = context.model?.candidates;
 	if (opponentCandidates && difficulty.opponentModelWeight > 0) {
@@ -376,7 +392,9 @@ export function observeAnswer(
 	answer: Answer,
 	random = Math.random,
 ) {
-	if (random() < computer.difficulty.clueDropRate) return computer;
+	if (random() < computer.difficulty.clueDropRate) {
+		return computer;
+	}
 
 	return {
 		...computer,
@@ -391,10 +409,13 @@ function chooseQuestionAction(
 	context: OpponentContext = {},
 ) {
 	const actions = generateLegalQuestionActions(visibleQuestionCards);
-	if (actions.length === 0) return null;
+	if (actions.length === 0) {
+		return null;
+	}
 
-	if (random() < computer.difficulty.randomMoveRate)
+	if (random() < computer.difficulty.randomMoveRate) {
 		return randomChoice(actions, random);
+	}
 
 	const candidates = randomSample(
 		computer.candidates,
@@ -419,7 +440,9 @@ export function chooseComputerTurn(
 	context: OpponentContext = {},
 ) {
 	const guess = shouldGuess(computer.candidates, computer.difficulty, context);
-	if (guess) return { type: "guess", code: guess } as const;
+	if (guess) {
+		return { type: "guess", code: guess } as const;
+	}
 
 	const action = chooseQuestionAction(
 		computer,
@@ -427,7 +450,9 @@ export function chooseComputerTurn(
 		random,
 		context,
 	);
-	if (!action) return { type: "pass" } as const;
+	if (!action) {
+		return { type: "pass" } as const;
+	}
 
 	return { type: "ask", action } as const;
 }
