@@ -51,6 +51,7 @@ pnpm check
 pnpm test
 pnpm e2e
 pnpm build
+pnpm deploy
 ```
 
 ## 테스트
@@ -64,6 +65,54 @@ E2E 재현을 위해 게임 URL에서 `seed`, `difficulty`, `first` query를 사
 ```text
 /game?seed=31&difficulty=beginner&first=human
 ```
+
+## 배포
+
+이 프로젝트는 TanStack Start SSR 앱이라 Cloudflare Pages 정적 사이트가 아니라 Cloudflare Workers로 배포합니다. `pnpm build`를 실행하면 Vite가 다음 산출물을 만듭니다.
+
+```text
+dist/client  # 정적 에셋
+dist/server  # Worker SSR 번들
+```
+
+`wrangler deploy`는 `dist/server/wrangler.json`을 사용하고, `dist/client`를 Worker assets로 함께 업로드합니다.
+
+### Cloudflare 대시보드에서 배포
+
+토큰을 GitHub Secrets에 넣지 않고 Cloudflare에서 직접 연결하려면 Workers Builds를 사용합니다.
+
+1. Cloudflare Dashboard에서 **Workers & Pages**로 이동
+2. **Create application** 선택
+3. **Import a repository**에서 GitHub 계정과 `jingjing2222/break-the-code` 저장소 선택
+4. 프로젝트를 Worker로 생성하고 이름을 `break-the-code`로 설정
+5. 빌드 설정을 다음처럼 입력
+
+```text
+Root directory: /
+Build command: pnpm build
+Deploy command: npx wrangler deploy
+```
+
+6. 필요한 경우 환경 변수에 Node 버전을 지정
+
+```text
+NODE_VERSION=22
+```
+
+7. 저장 후 배포
+
+Cloudflare Workers Builds는 대시보드에서 GitHub 저장소를 연결하면 Cloudflare가 빌드/배포 인증을 관리합니다. 그래서 별도의 GitHub Actions 토큰 설정 없이 `main` 브랜치 push로 자동 배포할 수 있습니다.
+
+### 로컬에서 직접 배포
+
+로컬에서 수동 배포하려면 Cloudflare에 로그인한 뒤 실행합니다.
+
+```bash
+pnpm exec wrangler login
+pnpm deploy
+```
+
+배포 URL은 기본적으로 Workers 도메인입니다. `break-the-code.pages.dev`는 Cloudflare Pages 프로젝트 도메인이므로 이 Worker 배포와는 별도입니다. 그 도메인을 반드시 써야 한다면 Pages용 정적 배포로 구조를 바꾸거나, Workers에 커스텀 도메인을 연결하는 방식으로 운영해야 합니다.
 
 ## 참고 문서
 
