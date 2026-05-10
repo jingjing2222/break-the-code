@@ -1,7 +1,7 @@
-# Break the Code 모바일 웹 구현 계획
+# 숫자야구+ 모바일 웹 구현 계획
 
 ## Summary
-- 기존 TanStack Start 예제 앱을 사람 vs 컴퓨터 2인전 Break the Code 앱으로 교체한다.
+- 기존 TanStack Start 예제 앱을 사람 vs 컴퓨터 2인전 숫자야구+ 앱으로 교체한다.
 - AI는 난이도별 별도 로직이 아니라 하나의 후보군 필터링 추론 엔진을 사용하고, 난이도는 `clueDropRate`, `randomMoveRate`, `sampleLimit`, `scoreMode`, `guessConfidence`, `sharedInfoPenalty`, `lookaheadDepth` 설정만 다르게 둔다.
 - AI 객체에는 `myCode`, `candidates`, `difficulty`만 넣고, 유저 실제 패나 비공개 덱/질문 정보는 절대 전달하지 않는다.
 - UI는 `DESIGN.md`의 WIRED풍 원칙을 따른다: 모바일 퍼스트, 흰 배경, 검정 룰, 사각형, 그림자/그라데이션 없음.

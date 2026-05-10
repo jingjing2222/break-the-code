@@ -12,7 +12,7 @@ export default function Header() {
 					className="font-['Space_Mono'] text-xs font-bold uppercase tracking-[1px] text-black no-underline hover:text-[#057dbc] hover:underline sm:text-sm sm:tracking-[1.2px]"
 					to="/"
 				>
-					BREAK THE CODE
+					숫자야구+
 				</Link>
 				<div className="flex gap-3 font-['Work_Sans'] text-xs font-bold uppercase sm:gap-5 sm:text-sm">
 					<Link

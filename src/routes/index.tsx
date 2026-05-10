@@ -11,10 +11,10 @@ function Home() {
 			<section className="grid gap-6 border-b-2 border-black pb-8 md:grid-cols-[minmax(0,1fr)_280px] md:items-end">
 				<div>
 					<p className="font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px]">
-						TAGIRON / BREAK THE CODE
+						숫자야구+
 					</p>
 					<h1 className="mt-2 font-['Libre_Baskerville'] text-[clamp(2.5rem,12vw,6rem)] leading-[1.04] tracking-normal text-black">
-						Break the Code
+						숫자야구+
 					</h1>
 					<p className="mt-4 max-w-3xl font-['Source_Serif_4'] text-lg leading-8">
 						질문 카드로 단서를 모아 상대의 다섯 타일을 먼저 맞히는 2인

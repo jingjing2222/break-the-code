@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Project Goal
-- Build a mobile-first responsive Break the Code web app for human vs computer 2-player play.
+- Build a mobile-first responsive 숫자야구+ web app for human vs computer 2-player play.
 - Treat `PLAN.md` as the implementation source of truth and `DESIGN.md` as the visual source of truth.
 - Replace the existing conference starter experience with the playable game experience.
 

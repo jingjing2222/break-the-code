@@ -16,11 +16,12 @@ export const Route = createRootRoute({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "Break the Code",
+				title: "숫자야구 플러스",
 			},
 			{
 				name: "description",
-				content: "질문 카드로 상대의 다섯 타일을 먼저 맞히는 타기론 웹 게임.",
+				content:
+					"질문 카드로 상대의 다섯 타일 암호를 먼저 맞히는 숫자 추리 게임.",
 			},
 			{
 				name: "theme-color",

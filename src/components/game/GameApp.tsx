@@ -1338,13 +1338,13 @@ export default function GameApp() {
 				aria-labelledby="game-title"
 			>
 				<p className="m-0 font-['Space_Mono'] text-xs font-bold uppercase tracking-[1.2px]">
-					TAGIRON / BREAK THE CODE
+					숫자야구+
 				</p>
 				<h1
 					className="m-0 mt-2 font-['Libre_Baskerville'] text-[clamp(2.4rem,11vw,5.5rem)] leading-[1.05] tracking-normal text-black"
 					id="game-title"
 				>
-					Break the Code
+					숫자야구+
 				</h1>
 				<p className="mt-3 max-w-3xl text-base leading-7">
 					공개 질문 카드 6장을 골라 컴퓨터의 5개 암호 타일을 먼저 맞히십시오.

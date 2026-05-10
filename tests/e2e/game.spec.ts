@@ -52,9 +52,7 @@ test("mobile flow starts a game, asks a question, and receives an AI turn", asyn
 	await page.setViewportSize({ height: 844, width: 390 });
 	await page.goto("/game?seed=31&difficulty=beginner&first=human");
 
-	await expect(
-		page.getByRole("heading", { name: "Break the Code" }),
-	).toBeVisible();
+	await expect(page.getByRole("heading", { name: "숫자야구+" })).toBeVisible();
 	await expect(page.getByLabel("질문 카드").getByRole("article")).toHaveCount(
 		6,
 	);
