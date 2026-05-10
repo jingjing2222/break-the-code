@@ -20,6 +20,9 @@
 - The visible answer key is `color + number`; physical tile `id` is only for internal tile identity.
 - AI starts with all possible opponent-code candidates made from tiles excluding its own code.
 - Every observed answer filters the AI candidate set unless difficulty drops the clue.
+- Question selection must evaluate answer buckets for self information gain, worst-case remaining candidates, immediate solve probability, shared-info leak, and opponent denial value.
+- `GameState.humanModel` tracks what the human player could know about the computer code from public information only.
+- All difficulties may use `humanModel`, but only through difficulty weights and thresholds. Beginner should barely use it, intermediate lightly, advanced strongly, and expert for denial and forced-risk guesses.
 - If the visible candidate group is unique, AI can safely guess.
 - Beginner and intermediate may guess earlier according to configured confidence.
 - Advanced and expert should avoid shared-info cards that leak unusually strong information about their own code.

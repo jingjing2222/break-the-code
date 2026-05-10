@@ -16,11 +16,14 @@
   - 질문 카드는 “답변 함수”로 모델링하고, 공개 질문 카드 6장에서 합법 액션을 생성한다.
 
 - AI
-  - 공통 엔진은 `makeInitialCandidates`, `filterCandidates`, `expectedRemaining`, `distinctAnswerCount`, `worstCaseRemaining`, `bucketCandidates`, `lookaheadScore`, `shouldGuess`를 제공한다.
+  - 공통 엔진은 `makeInitialCandidates`, `filterCandidates`, `questionPartitionStats`, `evaluateQuestionAction`, `expectedRemaining`, `worstCaseRemaining`, `bucketCandidates`, `lookaheadScore`, `shouldGuess`를 제공한다.
+  - 질문 선택은 각 카드의 답변 분포를 bucket으로 나눈 뒤 내 정보 이득, 최악 케이스, 즉시 해결 확률, 공유 정보 누설, 상대에게 넘겼을 때의 위험도를 함께 계산한다.
   - 초급: 후보군은 유지하지만 단서 20% 누락, 랜덤 질문 65%, 샘플 150개, 65% 이상이면 성급 추측 가능.
   - 중급: 단서 5% 누락, 랜덤 질문 25%, 샘플 800개, 답변 종류 수가 많은 질문 선호, 85% 이상이면 추측.
   - 고급: 단서 누락 없음, 랜덤 8%, 전체 후보 기반 `expectedRemaining` 최소화, 공유 정보 누설 패널티 적용, 보이는 후보가 1개일 때만 추측.
   - 전문가: 랜덤 1%, 기대값 + 최악값 + 2수 앞 탐색 + 누설 패널티 + 상대에게 좋은 카드 제거 보너스, 확정 위주 추측.
+  - `GameState.humanModel`은 플레이어가 컴퓨터 암호에 대해 알 수 있는 후보군을 공개 정보만으로 추적한다.
+  - 모든 난이도는 `humanModel`을 받되 `opponentModelWeight`, 강제 선언 임계값을 다르게 둔다. 초급은 거의 무시하고, 중급은 약하게, 고급은 적극적으로, 전문가는 카드 차단과 위험 선언에 강하게 사용한다.
   - `ComputerPlayer`는 공정성 보장을 위해 실제 유저 패, 미공개 질문 카드, 전체 미사용 타일을 저장하지 않는다.
 
 - UI/상태
@@ -42,6 +45,8 @@
   - 후보군 초기 개수와 자기 타일 제외 검증
   - 질문 카드별 답변 함수 검증
   - 답변 관찰 후 후보군 필터링 검증
+  - 플레이어가 얻은 답변과 공유 정보가 `humanModel` 후보군을 줄이는지 검증
+  - 질문 가치 평가가 유용한 질문과 상대에게 넘기면 위험한 질문을 구분하는지 검증
   - visible candidate grouping과 추측 판단 검증
   - AI가 실제 유저 패 없이도 액션을 선택하는지 검증
 

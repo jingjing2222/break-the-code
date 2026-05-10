@@ -1,6 +1,5 @@
 import {
 	bucketCandidates,
-	distinctAnswerCount,
 	expectedRemaining,
 	filterCandidates,
 	getVisibleCandidateGroups,
@@ -13,6 +12,7 @@ import type {
 	ComputerPlayer,
 	DifficultyConfig,
 	DifficultyName,
+	OpponentModel,
 	QuestionAction,
 	QuestionCard,
 } from "./types";
@@ -31,6 +31,13 @@ export const DIFFICULTIES = {
 		sharedInfoPenalty: 0,
 		lookaheadDepth: 0,
 		denyOpponentGoodCards: false,
+		opponentModelWeight: 0.05,
+		worstCaseWeight: 0,
+		solveChanceWeight: 0.1,
+		opponentDenyWeight: 0.05,
+		forcedGuessOpponentConfidence: 0.98,
+		forcedGuessSelfConfidence: 0.65,
+		forcedGuessQuestionThreshold: 0,
 	},
 	intermediate: {
 		name: "intermediate",
@@ -45,6 +52,13 @@ export const DIFFICULTIES = {
 		sharedInfoPenalty: 0.5,
 		lookaheadDepth: 0,
 		denyOpponentGoodCards: false,
+		opponentModelWeight: 0.25,
+		worstCaseWeight: 0.05,
+		solveChanceWeight: 0.25,
+		opponentDenyWeight: 0.15,
+		forcedGuessOpponentConfidence: 0.92,
+		forcedGuessSelfConfidence: 0.75,
+		forcedGuessQuestionThreshold: 1,
 	},
 	advanced: {
 		name: "advanced",
@@ -59,6 +73,13 @@ export const DIFFICULTIES = {
 		sharedInfoPenalty: 1.5,
 		lookaheadDepth: 0,
 		denyOpponentGoodCards: false,
+		opponentModelWeight: 0.6,
+		worstCaseWeight: 0.15,
+		solveChanceWeight: 0.5,
+		opponentDenyWeight: 0.4,
+		forcedGuessOpponentConfidence: 0.85,
+		forcedGuessSelfConfidence: 0.85,
+		forcedGuessQuestionThreshold: 2,
 	},
 	expert: {
 		name: "expert",
@@ -73,8 +94,21 @@ export const DIFFICULTIES = {
 		sharedInfoPenalty: 2,
 		lookaheadDepth: 2,
 		denyOpponentGoodCards: true,
+		opponentModelWeight: 1,
+		worstCaseWeight: 0.35,
+		solveChanceWeight: 0.75,
+		opponentDenyWeight: 1,
+		forcedGuessOpponentConfidence: 0.75,
+		forcedGuessSelfConfidence: 0.5,
+		forcedGuessQuestionThreshold: 4,
 	},
 } satisfies Record<DifficultyName, DifficultyConfig>;
+
+type OpponentContext = {
+	model?: OpponentModel;
+	questionCardsRemaining?: number;
+	visibleActions?: readonly QuestionAction[];
+};
 
 function randomChoice<T>(items: readonly T[], random = Math.random) {
 	return items[Math.floor(random() * items.length)];
@@ -105,10 +139,9 @@ function minBy<T>(items: readonly T[], score: (item: T) => number) {
 	);
 }
 
-function maxBy<T>(items: readonly T[], score: (item: T) => number) {
-	return items.reduce((best, item) =>
-		score(item) > score(best) ? item : best,
-	);
+function safeRatio(value: number, total: number) {
+	if (total <= 0) return 0;
+	return value / total;
 }
 
 function rarityScore(
@@ -135,11 +168,135 @@ export function getSharedInfoLeakPenalty(
 	return rarityScore(action, myAnswer, universe);
 }
 
-function getDenyBonus(action: QuestionAction, candidates: readonly Code[]) {
-	if (!action.isSharedInfo) return 0;
-	return (
-		worstCaseRemaining(candidates, action) / Math.max(candidates.length, 1)
-	);
+export function opponentCardDanger(
+	opponentCandidates: readonly Code[],
+	action: QuestionAction,
+) {
+	if (opponentCandidates.length <= 1) return 0;
+
+	const current = opponentCandidates.length;
+	const expectedGain = current - expectedRemaining(opponentCandidates, action);
+	const worstGain = current - worstCaseRemaining(opponentCandidates, action);
+
+	return expectedGain + worstGain * 0.25;
+}
+
+export function opponentThreatLevel(opponentCandidates: readonly Code[]) {
+	const groups = getVisibleCandidateGroups(opponentCandidates);
+	const total = opponentCandidates.length;
+	const bestProbability =
+		total === 0
+			? 0
+			: Math.max(...[...groups.values()].map((group) => group.length / total));
+
+	return {
+		visibleGroups: groups.size,
+		bestProbability,
+		candidateCount: total,
+	};
+}
+
+export function questionPartitionStats(
+	candidates: readonly Code[],
+	action: QuestionAction,
+) {
+	const buckets = bucketCandidates(candidates, action);
+	const total = candidates.length;
+	let expectedAfter = 0;
+	let solveProbability = 0;
+	let worstAfter = 0;
+
+	for (const bucket of buckets.values()) {
+		const probability = safeRatio(bucket.length, total);
+		expectedAfter += probability * bucket.length;
+		worstAfter = Math.max(worstAfter, bucket.length);
+
+		if (getVisibleCandidateGroups(bucket).size === 1) {
+			solveProbability += probability;
+		}
+	}
+
+	return {
+		distinctAnswers: buckets.size,
+		expectedAfter,
+		worstAfter,
+		expectedGain: Math.max(0, total - expectedAfter),
+		worstGain: Math.max(0, total - worstAfter),
+		solveProbability,
+	};
+}
+
+export function evaluateQuestionAction(
+	computer: ComputerPlayer,
+	action: QuestionAction,
+	candidates: readonly Code[],
+	context: OpponentContext = {},
+) {
+	const difficulty = computer.difficulty;
+	const own = questionPartitionStats(candidates, action);
+	const total = Math.max(candidates.length, 1);
+	const opponentCandidates = context.model?.candidates;
+	const opponent = opponentCandidates
+		? questionPartitionStats(opponentCandidates, action)
+		: null;
+	const opponentDanger = opponent
+		? safeRatio(
+				opponent.expectedGain + opponent.worstGain * 0.25,
+				opponentCandidates?.length ?? 1,
+			)
+		: 0;
+	const leakPenalty =
+		safeRatio(
+			getSharedInfoLeakPenalty(action, computer.myCode, computer.candidates),
+			Math.max(computer.candidates.length, 1),
+		) * difficulty.sharedInfoPenalty;
+	const solveBonus = own.solveProbability * difficulty.solveChanceWeight;
+	const denyBonus =
+		opponentDanger *
+		difficulty.opponentModelWeight *
+		difficulty.opponentDenyWeight;
+
+	let baseScore: number;
+
+	if (difficulty.scoreMode === "distinct_answer_count") {
+		baseScore = -own.distinctAnswers;
+	} else if (difficulty.scoreMode === "minimax_plus_lookahead") {
+		const actions = context.visibleActions ?? [action];
+		const buckets = bucketCandidates(candidates, action);
+		let expectedFuture = 0;
+
+		for (const bucket of buckets.values()) {
+			const probability = safeRatio(bucket.length, candidates.length);
+			expectedFuture +=
+				probability *
+				lookaheadScore(
+					bucket,
+					actions,
+					Math.max(0, difficulty.lookaheadDepth - 1),
+					computer.myCode,
+					computer.candidates,
+				);
+		}
+
+		baseScore =
+			safeRatio(expectedFuture, total) +
+			safeRatio(own.worstAfter, total) * difficulty.worstCaseWeight;
+	} else {
+		baseScore =
+			safeRatio(own.expectedAfter, total) +
+			safeRatio(own.worstAfter, total) * difficulty.worstCaseWeight;
+	}
+
+	return {
+		action,
+		own,
+		opponent,
+		leakPenalty,
+		solveBonus,
+		denyBonus,
+		score: baseScore + leakPenalty - solveBonus - denyBonus,
+		isUseful: own.expectedGain > 0 || own.solveProbability > 0 || denyBonus > 0,
+	};
 }
 
 export function lookaheadScore(
@@ -175,6 +332,7 @@ export function lookaheadScore(
 export function shouldGuess(
 	candidates: readonly Code[],
 	difficulty: DifficultyConfig,
+	context: OpponentContext = {},
 ) {
 	const groups = getVisibleCandidateGroups(candidates);
 	const total = candidates.length;
@@ -188,6 +346,25 @@ export function shouldGuess(
 	const best = sorted[0];
 	if (!best) return null;
 	if (groups.size === 1) return best.representative;
+
+	const opponentCandidates = context.model?.candidates;
+	if (opponentCandidates && difficulty.opponentModelWeight > 0) {
+		const threat = opponentThreatLevel(opponentCandidates);
+		const lowQuestionPressure =
+			(context.questionCardsRemaining ?? Number.POSITIVE_INFINITY) <=
+			difficulty.forcedGuessQuestionThreshold;
+		const opponentIsClose =
+			threat.visibleGroups === 1 ||
+			(lowQuestionPressure &&
+				threat.bestProbability >= difficulty.forcedGuessOpponentConfidence);
+
+		if (
+			opponentIsClose &&
+			best.probability >= difficulty.forcedGuessSelfConfidence
+		) {
+			return best.representative;
+		}
+	}
 
 	if (
 		(difficulty.guessMode === "risky" ||
@@ -226,6 +403,7 @@ export function chooseQuestionAction(
 	computer: ComputerPlayer,
 	visibleQuestionCards: readonly QuestionCard[],
 	random = Math.random,
+	context: OpponentContext = {},
 ) {
 	const actions = generateLegalQuestionActions(visibleQuestionCards);
 	if (actions.length === 0) return null;
@@ -239,58 +417,31 @@ export function chooseQuestionAction(
 		random,
 	);
 
-	if (computer.difficulty.scoreMode === "distinct_answer_count") {
-		return maxBy(actions, (action) => distinctAnswerCount(candidates, action));
-	}
-
-	if (computer.difficulty.scoreMode === "minimax_plus_lookahead") {
-		return minBy(actions, (action) => {
-			const buckets = bucketCandidates(candidates, action);
-			let expectedFuture = 0;
-
-			for (const bucket of buckets.values()) {
-				const probability = bucket.length / candidates.length;
-				expectedFuture +=
-					probability *
-					lookaheadScore(
-						bucket,
-						actions,
-						1,
-						computer.myCode,
-						computer.candidates,
-					);
-			}
-
-			const worst = worstCaseRemaining(candidates, action);
-			const leak =
-				getSharedInfoLeakPenalty(action, computer.myCode, computer.candidates) *
-				computer.difficulty.sharedInfoPenalty;
-			const deny = computer.difficulty.denyOpponentGoodCards
-				? getDenyBonus(action, candidates) * 0.5
-				: 0;
-
-			return expectedFuture + worst * 0.35 + leak - deny;
-		});
-	}
-
-	return minBy(actions, (action) => {
-		const informationScore = expectedRemaining(candidates, action);
-		const leak =
-			getSharedInfoLeakPenalty(action, computer.myCode, computer.candidates) *
-			computer.difficulty.sharedInfoPenalty;
-		return informationScore + leak;
-	});
+	return minBy(
+		actions,
+		(action) =>
+			evaluateQuestionAction(computer, action, candidates, {
+				...context,
+				visibleActions: actions,
+			}).score,
+	);
 }
 
 export function chooseComputerTurn(
 	computer: ComputerPlayer,
 	visibleQuestionCards: readonly QuestionCard[],
 	random = Math.random,
+	context: OpponentContext = {},
 ) {
-	const guess = shouldGuess(computer.candidates, computer.difficulty);
+	const guess = shouldGuess(computer.candidates, computer.difficulty, context);
 	if (guess) return { type: "guess", code: guess } as const;
 
-	const action = chooseQuestionAction(computer, visibleQuestionCards, random);
+	const action = chooseQuestionAction(
+		computer,
+		visibleQuestionCards,
+		random,
+		context,
+	);
 	if (!action) return { type: "pass" } as const;
 
 	return { type: "ask", action } as const;

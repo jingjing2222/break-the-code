@@ -1,5 +1,5 @@
 import { chooseComputerTurn, DIFFICULTIES, observeAnswer } from "./ai";
-import { makeInitialCandidates } from "./deduction";
+import { filterCandidates, makeInitialCandidates } from "./deduction";
 import {
 	answerQuestion,
 	formatAction,
@@ -82,6 +82,9 @@ export function createGame(
 			candidates: makeInitialCandidates(deck, computerCode),
 			difficulty: DIFFICULTIES[difficultyName],
 		},
+		humanModel: {
+			candidates: makeInitialCandidates(deck, humanCode),
+		},
 		turn: startingPlayer,
 		status: "playing",
 		startingPlayer,
@@ -124,6 +127,24 @@ export function askQuestion(
 			: sharedAnswer === undefined
 				? state.computer
 				: observeAnswer(state.computer, action, sharedAnswer);
+	const humanModel =
+		actor === "human"
+			? {
+					candidates: filterCandidates(
+						state.humanModel.candidates,
+						action,
+						answer,
+					),
+				}
+			: sharedAnswer === undefined
+				? state.humanModel
+				: {
+						candidates: filterCandidates(
+							state.humanModel.candidates,
+							action,
+							sharedAnswer,
+						),
+					};
 	const sharedText = action.isSharedInfo
 		? ` 공유 정보: 질문자도 ${sharedAnswer}라고 답합니다.`
 		: "";
@@ -135,6 +156,7 @@ export function askQuestion(
 		...state,
 		...replacement,
 		computer,
+		humanModel,
 		lastAnswer: answer,
 		turn: exhausted ? state.turn : nextTurn(actor),
 		status: exhausted ? "exhausted" : state.status,
@@ -198,6 +220,10 @@ export function runComputerTurn(
 		state.computer,
 		state.visibleQuestionCards,
 		random,
+		{
+			model: state.humanModel,
+			questionCardsRemaining: state.questionDeck.length,
+		},
 	);
 
 	if (decision.type === "guess") {

@@ -7,12 +7,14 @@ import {
 	createGame,
 	createSeededRandom,
 	DIFFICULTIES,
+	evaluateQuestionAction,
 	filterCandidates,
 	formatCode,
 	generateLegalQuestionActions,
 	makeInitialCandidates,
 	observeAnswer,
 	QUESTION_CARDS,
+	questionPartitionStats,
 	shouldGuess,
 	sortCode,
 	visibleCodeKey,
@@ -50,6 +52,18 @@ describe("candidate filtering", () => {
 		expect(candidates).toHaveLength(3003);
 		expect(
 			candidates.every((code) => code.every((tile) => !myIds.has(tile.id))),
+		).toBe(true);
+	});
+
+	it("creates a player knowledge model from the player's own tiles", () => {
+		const state = createGame("advanced", createSeededRandom(5));
+		const humanIds = new Set(state.humanCode.map((tile) => tile.id));
+
+		expect(state.humanModel.candidates).toHaveLength(3003);
+		expect(
+			state.humanModel.candidates.every((code) =>
+				code.every((tile) => !humanIds.has(tile.id)),
+			),
 		).toBe(true);
 	});
 
@@ -130,6 +144,22 @@ describe("AI", () => {
 		).toBe(true);
 	});
 
+	it("tracks what the player learns after asking the computer", () => {
+		const state = createGame("advanced", createSeededRandom(19));
+		const action = { cardId: "count-odd", isSharedInfo: false };
+		const answer = answerQuestion(action, state.computerCode);
+		const next = askQuestion({ ...state, turn: "human" }, "human", action);
+
+		expect(next.humanModel.candidates.length).toBeLessThan(
+			state.humanModel.candidates.length,
+		);
+		expect(
+			next.humanModel.candidates.every(
+				(code) => answerQuestion(action, code) === answer,
+			),
+		).toBe(true);
+	});
+
 	it("learns from the human side of a shared information question", () => {
 		const state = createGame("advanced", createSeededRandom(17));
 		const card = QUESTION_CARDS.find(
@@ -164,6 +194,40 @@ describe("AI", () => {
 		).toBe(true);
 	});
 
+	it("tracks what the player learns when the computer asks a shared question", () => {
+		const state = createGame("advanced", createSeededRandom(29));
+		const card = QUESTION_CARDS.find(
+			(item) => item.id === "visible-key-at-position",
+		);
+		if (!card) throw new Error("Missing shared information card");
+
+		const action = {
+			cardId: card.id,
+			param: 0,
+			isSharedInfo: card.isSharedInfo,
+		};
+		const sharedAnswer = answerQuestion(action, state.computerCode);
+		const next = askQuestion(
+			{
+				...state,
+				turn: "computer",
+				visibleQuestionCards: [card],
+				questionDeck: [],
+			},
+			"computer",
+			action,
+		);
+
+		expect(next.humanModel.candidates.length).toBeLessThan(
+			state.humanModel.candidates.length,
+		);
+		expect(
+			next.humanModel.candidates.every(
+				(code) => answerQuestion(action, code) === sharedAnswer,
+			),
+		).toBe(true);
+	});
+
 	it("guesses when visible candidates collapse to a single code", () => {
 		const state = createGame("advanced", createSeededRandom(11));
 		const guess = shouldGuess([state.humanCode], DIFFICULTIES.advanced);
@@ -171,6 +235,108 @@ describe("AI", () => {
 		expect(guess ? visibleCodeKey(guess) : null).toBe(
 			visibleCodeKey(state.humanCode),
 		);
+	});
+
+	it("lets every difficulty use the player model at a different strength", () => {
+		expect(DIFFICULTIES.beginner.opponentModelWeight).toBeLessThan(
+			DIFFICULTIES.intermediate.opponentModelWeight,
+		);
+		expect(DIFFICULTIES.intermediate.opponentModelWeight).toBeLessThan(
+			DIFFICULTIES.advanced.opponentModelWeight,
+		);
+		expect(DIFFICULTIES.advanced.opponentModelWeight).toBeLessThan(
+			DIFFICULTIES.expert.opponentModelWeight,
+		);
+	});
+
+	it("scores whether a question is useful for solving the current candidates", () => {
+		const state = createGame("advanced", createSeededRandom(41));
+		const candidates = [
+			sortCode([
+				{ id: "R0", number: 0, color: "R" as const },
+				{ id: "B2", number: 2, color: "B" as const },
+				{ id: "R4", number: 4, color: "R" as const },
+				{ id: "B6", number: 6, color: "B" as const },
+				{ id: "R8", number: 8, color: "R" as const },
+			]),
+			sortCode([
+				{ id: "R1", number: 1, color: "R" as const },
+				{ id: "B2", number: 2, color: "B" as const },
+				{ id: "R4", number: 4, color: "R" as const },
+				{ id: "B6", number: 6, color: "B" as const },
+				{ id: "R8", number: 8, color: "R" as const },
+			]),
+		];
+		const computer = { ...state.computer, candidates };
+		const usefulAction = { cardId: "count-odd", isSharedInfo: false };
+		const uselessAction = {
+			cardId: "has-number",
+			param: 9,
+			isSharedInfo: false,
+		};
+		const useful = evaluateQuestionAction(computer, usefulAction, candidates);
+		const useless = evaluateQuestionAction(computer, uselessAction, candidates);
+
+		expect(
+			questionPartitionStats(candidates, usefulAction).solveProbability,
+		).toBe(1);
+		expect(useful.isUseful).toBe(true);
+		expect(useless.isUseful).toBe(false);
+		expect(useful.score).toBeLessThan(useless.score);
+	});
+
+	it("treats a card as useful when it denies the player a strong question", () => {
+		const state = createGame("expert", createSeededRandom(43));
+		const selfCandidates = [
+			sortCode([
+				{ id: "R0", number: 0, color: "R" as const },
+				{ id: "B2", number: 2, color: "B" as const },
+				{ id: "R4", number: 4, color: "R" as const },
+				{ id: "B6", number: 6, color: "B" as const },
+				{ id: "R8", number: 8, color: "R" as const },
+			]),
+			sortCode([
+				{ id: "B0", number: 0, color: "B" as const },
+				{ id: "R2", number: 2, color: "R" as const },
+				{ id: "B4", number: 4, color: "B" as const },
+				{ id: "R6", number: 6, color: "R" as const },
+				{ id: "B8", number: 8, color: "B" as const },
+			]),
+		];
+		const playerCandidates = [
+			selfCandidates[0],
+			sortCode([
+				{ id: "R1", number: 1, color: "R" as const },
+				{ id: "B2", number: 2, color: "B" as const },
+				{ id: "R4", number: 4, color: "R" as const },
+				{ id: "B6", number: 6, color: "B" as const },
+				{ id: "R8", number: 8, color: "R" as const },
+			]),
+		];
+		const computer = { ...state.computer, candidates: selfCandidates };
+		const action = { cardId: "count-odd", isSharedInfo: false };
+		const value = evaluateQuestionAction(computer, action, selfCandidates, {
+			model: { candidates: playerCandidates },
+		});
+
+		expect(value.own.expectedGain).toBe(0);
+		expect(value.opponent?.expectedGain).toBeGreaterThan(0);
+		expect(value.denyBonus).toBeGreaterThan(0);
+		expect(value.isUseful).toBe(true);
+	});
+
+	it("allows expert forced guesses when the player is about to solve", () => {
+		const state = createGame("expert", createSeededRandom(31));
+		const guess = shouldGuess(
+			[state.humanCode, state.computerCode],
+			DIFFICULTIES.expert,
+			{
+				model: { candidates: [state.computerCode] },
+				questionCardsRemaining: 4,
+			},
+		);
+
+		expect(guess).not.toBeNull();
 	});
 
 	it("chooses a legal ask or guess action", () => {

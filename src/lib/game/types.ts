@@ -54,12 +54,23 @@ export type DifficultyConfig = {
 	sharedInfoPenalty: number;
 	lookaheadDepth: number;
 	denyOpponentGoodCards: boolean;
+	opponentModelWeight: number;
+	worstCaseWeight: number;
+	solveChanceWeight: number;
+	opponentDenyWeight: number;
+	forcedGuessOpponentConfidence: number;
+	forcedGuessSelfConfidence: number;
+	forcedGuessQuestionThreshold: number;
 };
 
 export type ComputerPlayer = {
 	myCode: Code;
 	candidates: Code[];
 	difficulty: DifficultyConfig;
+};
+
+export type OpponentModel = {
+	candidates: Code[];
 };
 
 export type Player = "human" | "computer";
@@ -87,6 +98,7 @@ export type GameState = {
 	questionDeck: QuestionCard[];
 	visibleQuestionCards: QuestionCard[];
 	computer: ComputerPlayer;
+	humanModel: OpponentModel;
 	turn: Player;
 	status: GameStatus;
 	startingPlayer: Player;
